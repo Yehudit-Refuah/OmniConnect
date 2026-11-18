@@ -1,8 +1,11 @@
 # OmniConnect: Summary and step-by-step to-do list
 
-*Last updated: 2026-11-16*
+*Last updated: 2026-11-18*
 
 Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS Code terminal (**Terminal → New Terminal**), with the `OmniConnect` folder open (**File → Open Folder**).
+
+> ### 📍 You are here: **B1, step 2**
+> Git setup is finished and the project is on GitHub. The backend packages are installed. Next: remove the unused `src` folder, then create `backend/app/main.py`.
 
 ---
 
@@ -27,15 +30,17 @@ Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS
 - The three eCW queries in `db/ecw/`.
 - The docs: `DEVELOPMENT_PLAN.md`, `PBX_INTEGRATION_API.md` (for the PBX team), `call_flow_diagram.html`, `GETTING_STARTED.md`.
 - Git, uv and Python are installed.
-- The GitHub repo is created and private.
-- `git init` has run in the project folder.
+- Git setup is finished: the private repo `Yehudit-Refuah/OmniConnect` holds the first commit.
+- The backend project is created and its packages are installed (B1 step 1).
 
 ---
 
-## A. Finish Git setup
+## A. Git setup ✅ (finished)
 
-### A1. `git init` ✅
-- [x] Done.
+All of A is done. It's kept here for reference.
+
+### A1. `git init`
+- [x] Done
 
 ### A2. Create `.gitignore`
 - [x] Done
@@ -85,7 +90,7 @@ This file tells Git which files must never be uploaded.
 **Why:** it's a real patient identifier. Once something is committed, it stays in Git history even if you delete it later.
 
 ### A4. Choose what to save (stage)
-- [ ] Done
+- [x] Done
 
 ```powershell
 git add .
@@ -101,7 +106,7 @@ git status
 If you see anything ending in `.csv`, `.xlsx`, `.env`, `.png` or `.jpg`, **stop**. Run `git reset` to unstage everything, then ask Claude.
 
 ### A5. Save a snapshot (commit)
-- [ ] Done
+- [x] Done
 
 ```powershell
 git commit -m "Initial commit: eCW queries and project docs"
@@ -110,7 +115,7 @@ git commit -m "Initial commit: eCW queries and project docs"
 **Check it worked:** `git log --oneline` shows one line with your message.
 
 ### A6. Connect to GitHub and upload (push)
-- [ ] Done
+- [x] Done
 
 ```powershell
 git remote add origin https://github.com/Yehudit-Refuah/OmniConnect.git
@@ -129,6 +134,17 @@ git push -u origin main
 | `src refspec main does not match any` | The commit (A5) didn't happen. Do A5 first. |
 | `Repository not found` / `403` | You're signed in with a different GitHub account. Ask Claude how to switch accounts. |
 
+### Lesson learned: fixing something committed by mistake
+If something that shouldn't be there gets into your **last** commit, remove it from the file, then:
+```powershell
+git add .
+git commit --amend --no-edit
+```
+- **Not pushed yet:** that's all you need.
+- **Already pushed, and you're the only one using the repo:** also run `git push --force`. Avoid `--force` once teammates share the repo; ask first.
+
+Before every commit, check the staged files for any ID you pasted in while debugging: `git grep --cached <the-id>` should print nothing.
+
 ---
 
 ## B. Build the API
@@ -142,45 +158,98 @@ git commit -m "Short description of what you did"
 git push
 ```
 
-### B1. Backend skeleton + health endpoint
-- [ ] Done
+### B1. Backend skeleton + health endpoint ← 📍 you are here
 
 **What you get:** a running API with one address, `/api/health`, that answers `{"status": "ok"}`.
 
-1. Create the backend project and install the packages:
-   ```powershell
-   cd C:\Users\ygarbuz\Projects\OmniConnect
-   uv init backend --app --python 3.13
-   cd backend
-   uv add "fastapi[standard]" sqlalchemy pyodbc apscheduler python-dotenv
-   uv add --dev pytest ruff
+#### B1.1 Create the backend project and install the packages
+- [x] Done
+
+```powershell
+cd C:\Users\ygarbuz\Projects\OmniConnect
+uv init backend --app --python 3.13
+cd backend
+uv add "fastapi[standard]" sqlalchemy pyodbc apscheduler python-dotenv
+uv add --dev pytest ruff
+```
+
+#### B1.2 Remove the parts `uv init` added that we don't use
+- [ ] Done
+
+Your uv version created a `src/` folder. We keep our code in an `app` folder instead.
+
+1. In VS Code's file list, right-click `backend/src` → **Delete**.
+2. Open `backend/pyproject.toml` and delete these lines, then save (**Ctrl+S**):
+   ```toml
+   [project.scripts]
+   backend = "backend:main"
+
+   [build-system]
+   requires = ["uv_build>=0.13.8,<0.14.0"]
+   build-backend = "uv_build"
    ```
-2. `uv init` creates a sample `backend/main.py`. Delete it; we keep our code in an `app` folder.
-3. Create the folder `backend/app` with two files:
-   - `backend/app/__init__.py`, left empty. It marks the folder as a Python package.
-   - `backend/app/main.py`:
-     ```python
-     from fastapi import FastAPI
-
-     app = FastAPI(title="OmniConnect API")
-
-
-     @app.get("/api/health")
-     def health():
-         """Simple check that the API is running."""
-         return {"status": "ok"}
-     ```
-4. Run it, from inside the `backend` folder:
+3. In the terminal:
    ```powershell
-   uv run fastapi dev app/main.py
+   cd C:\Users\ygarbuz\Projects\OmniConnect\backend
+   uv sync
    ```
+
+**Check it worked:** `uv sync` finishes without errors, and `pyproject.toml` has only the `[project]` and `[dependency-groups]` sections left.
+
+#### B1.3 Create the `app` folder and its two files
+- [ ] Done
+
+1. Right-click the `backend` folder → **New Folder** → name it `app`.
+2. Right-click `app` → **New File** → `__init__.py`. Leave it empty and save. It tells Python that `app` is a package.
+3. Right-click `app` → **New File** → `main.py`. Paste this and save:
+   ```python
+   from fastapi import FastAPI
+
+   app = FastAPI(title="OmniConnect API")
+
+
+   @app.get("/api/health")
+   def health():
+       """Simple check that the API is running."""
+       return {"status": "ok"}
+   ```
+
+**Check it worked:** the file list shows `backend/app/__init__.py` and `backend/app/main.py`.
+
+#### B1.4 Run it
+- [ ] Done
+
+Run this from inside the `backend` folder:
+```powershell
+uv run fastapi dev app/main.py
+```
+Wait until you see `Uvicorn running on http://127.0.0.1:8000`.
 
 **Check it worked:**
 - Open http://localhost:8000/api/health in your browser. You should see `{"status":"ok"}`.
 - Open http://localhost:8000/docs to see automatic, clickable API docs.
-- Stop the server with **Ctrl+C**.
+- Stop the server with **Ctrl+C** in the terminal.
 
-**Commit:** `git commit -m "Add backend skeleton with health endpoint"`
+**If you get an error:** copy the terminal text and paste it to Claude.
+
+#### B1.5 Save and upload
+- [ ] Done
+
+From the project folder:
+```powershell
+cd C:\Users\ygarbuz\Projects\OmniConnect
+git add .
+git status
+```
+**Check:** the new files should all be in `backend/` (`app/`, `pyproject.toml`, `uv.lock`, `README.md`, `.python-version`) plus `docs/TODO.md`. There should be **no `.venv`** in the list, because `.gitignore` hides it.
+
+Then:
+```powershell
+git commit -m "Add backend skeleton with health endpoint"
+git push
+```
+
+**Check it worked:** on GitHub, the `backend` folder appears.
 
 ### B2. GET /calls with fake data
 - [ ] Done
