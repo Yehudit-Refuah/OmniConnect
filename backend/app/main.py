@@ -1,7 +1,10 @@
 from fastapi import FastAPI
+from app.pbx.router import router as pbx_router
+
+
 
 app = FastAPI(title="OmniConnect API")
-
+app.include_router(pbx_router)
 
 @app.get("/api/health")
 def health():

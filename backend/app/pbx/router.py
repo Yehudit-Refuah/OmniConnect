@@ -1,0 +1,97 @@
+from datetime import datetime
+
+from fastapi import APIRouter, HTTPException
+
+from app.pbx.models import (Appointment, Call, CallAnswer, CallBatch,
+                            CallEvent, ListenSettings, Patient)
+
+router = APIRouter(prefix="/api/pbx/v1")
+
+FAKE_CALLS = [
+    Call(
+        attempt_id="a-test-0001",
+        call_id=5001,
+        attempt_number=1,
+        call_type="day_prior_confirmation",
+        phone="+18455550100",
+        language="en-US",
+        operator_extension="1100",
+        do_not_call_after=datetime.fromisoformat("2026-11-17T20:00:00-05:00"),
+        patients=[
+            Patient(
+                patient_name="Test Patient",
+                mrn="TEST000001",
+                appointments=[
+                    Appointment(
+                        appointment_id=1001,
+                        visit_datetime=datetime.fromisoformat("2026-11-18T09:30:00-05:00"),
+                        arrival_datetime=datetime.fromisoformat("2026-11-18T09:15:00-05:00"),
+                        facility="Test Facility",
+                        facility_address="1 Test St, Spring Valley, NY 10977",
+                        provider="Dr. Example",
+                    )
+                ],
+            )
+        ],
+    )
+]
+
+
+@router.get("/calls", response_model=CallBatch)
+def get_calls(limit: int = 50):
+    """Return the calls the PBX should place now (fake data for now)."""
+    return CallBatch(
+        batch_id="test-batch",
+        generated_at=datetime.now().astimezone(),
+        calls=FAKE_CALLS[:limit],
+    )
+
+# Answers we already gave, so a repeated POST gets the same answer.
+# Kept in memory for now; moves to the database in B7.
+_answers: dict[tuple[str, int], CallAnswer] = {}
+
+
+def find_call(attempt_id: str) -> Call | None:
+    return next((c for c in FAKE_CALLS if c.attempt_id == attempt_id), None)
+
+
+@router.post("/calls", response_model=CallAnswer)
+def post_call_event(event: CallEvent):
+    """The PBX reports what happened; we answer what to say and do next."""
+    key = (event.attempt_id, event.sequence)
+    if key in _answers:
+        return _answers[key]
+
+    call = find_call(event.attempt_id)
+    if call is None:
+        raise HTTPException(status_code=404, detail="Unknown attempt_id")
+
+    answer = answer_event(event, call)
+    _answers[key] = answer
+    return answer
+
+
+def answer_event(event: CallEvent, call: Call) -> CallAnswer:
+    """Fixed answers for now. B5 replaces the conversation parts."""
+    if event.event == "dialing":
+        return CallAnswer(action="dial")
+    if event.event == "answered":
+        return CallAnswer(
+            say="Hello, this is Refuah Health calling to confirm an appointment.",
+            language=call.language, action="listen", listen=ListenSettings(),
+        )
+    if event.event == "voicemail":
+        # No names or visit details on voicemail: someone else may hear it.
+        return CallAnswer(
+            say="Hello, this is Refuah Health calling about an upcoming appointment. "
+                "Please call us back. Thank you.",
+            language=call.language, action="hangup",
+        )
+    if event.event in ("reply", "no_input"):
+        return CallAnswer(
+            say="Please hold while I transfer you to a staff member.",
+            language=call.language, action="transfer",
+            transfer_to=call.operator_extension,
+        )
+    return CallAnswer(action="none")  # hangup_by_patient, ended
+

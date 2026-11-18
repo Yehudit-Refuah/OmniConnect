@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniConnect: What we've built so far (up to B3)</title>
+<style>
+  :root {
+    --pbx: #2563eb;  --pbx-bg: #eff6ff;
+    --api: #7c3aed;  --api-bg: #f5f3ff;
+    --git: #0f766e;  --git-bg: #f0fdfa;
+    --ok:  #16a34a;  --ok-bg:  #dcfce7;
+    --todo:#94a3b8;  --todo-bg:#f8fafc;
+    --warn:#ea580c;  --warn-bg:#fff7ed;
+    --ink: #0f172a;  --muted: #64748b; --line: #cbd5e1;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 32px 24px 48px; font-family: "Segoe UI", system-ui, sans-serif;
+         color: var(--ink); background: #f8fafc; line-height: 1.45; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header h1 { margin: 0 0 4px; font-size: 26px; }
+  header p { margin: 0; color: var(--muted); }
+  code { font-family: Consolas, "Cascadia Mono", monospace; font-size: .92em;
+         background: #eef2f7; padding: 1px 5px; border-radius: 4px; }
+  .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px;
+          box-shadow: 0 1px 3px rgba(15,23,42,.06); margin-top: 22px; }
+  .card h2 { margin: 0 0 6px; font-size: 18px; }
+  .card > p.lead { margin: 0 0 16px; color: var(--muted); }
+
+  /* progress */
+  .progress { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  .ps { border: 2px solid; border-radius: 12px; padding: 12px; font-size: 13px; }
+  .ps b { display: block; font-size: 15px; }
+  .ps .tag { display: inline-block; margin-top: 6px; font-size: 11.5px; font-weight: 600;
+             padding: 2px 8px; border-radius: 99px; }
+  .done { border-color: var(--ok); background: var(--ok-bg); }
+  .done .tag { background: var(--ok); color: #fff; }
+  .now  { border-color: var(--warn); background: var(--warn-bg); }
+  .now .tag { background: var(--warn); color: #fff; }
+  .next { border-color: var(--todo); background: var(--todo-bg); border-style: dashed; color: var(--muted); }
+  .next .tag { background: #e2e8f0; color: var(--muted); }
+
+  /* architecture */
+  svg { width: 100%; height: auto; display: block; }
+
+  /* file map */
+  .files { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .file { border: 1px solid #e2e8f0; border-left: 5px solid var(--api); border-radius: 10px; padding: 12px 14px; }
+  .file.cfg { border-left-color: var(--git); }
+  .file.new { border-left-color: var(--warn); }
+  .file h3 { margin: 0 0 4px; font-size: 14.5px; font-family: Consolas, monospace; }
+  .file p { margin: 0; font-size: 13.5px; color: #334155; }
+  .file .when { float: right; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+
+  /* nesting */
+  .nest { border: 2px solid var(--api); background: var(--api-bg); border-radius: 12px; padding: 10px 12px 12px; }
+  .nest .nest { margin-top: 8px; background: #fff; }
+  .nest .nest .nest { background: var(--api-bg); }
+  .nest .nest .nest .nest { background: #fff; }
+  .nest > .t { font-weight: 700; font-size: 14px; }
+  .nest > .t small { font-weight: 400; color: var(--muted); margin-left: 6px; }
+  .flds { font-family: Consolas, monospace; font-size: 12.5px; color: #475569; margin-top: 3px; }
+
+  /* steps */
+  ol.steps { margin: 0; padding-left: 22px; }
+  ol.steps li { margin: 0 0 8px; }
+
+  .alert { border: 2px solid var(--warn); background: var(--warn-bg); border-radius: 12px; padding: 14px 16px; }
+  .alert h3 { margin: 0 0 6px; font-size: 15px; color: #9a3412; }
+  .alert pre { margin: 8px 0 0; background: #fff; border: 1px solid #fed7aa; border-radius: 8px;
+               padding: 10px 12px; font-size: 12.5px; overflow-x: auto; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .bad { color: #b91c1c; } .good { color: #15803d; }
+
+  .tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .tool { border: 2px solid var(--git); background: var(--git-bg); border-radius: 12px; padding: 12px; font-size: 13.5px; }
+  .tool b { display: block; font-size: 15px; margin-bottom: 2px; }
+  footer { margin-top: 20px; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 900px) { .progress, .tools { grid-template-columns: 1fr 1fr; } .files, .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>OmniConnect: What we've built so far</h1>
+  <p>Progress up to step B3 · Python + FastAPI backend · all data shown is fake test data</p>
+</header>
+
+<!-- 1. PROGRESS -->
+<div class="card">
+  <h2>1. Where we are</h2>
+  <p class="lead">Each step is: build it, run it, check it, commit and push it to GitHub.</p>
+  <div class="progress">
+    <div class="ps done"><b>A · Git setup</b>The project is saved in Git and uploaded to the private GitHub repo.<br><span class="tag">✓ Done</span></div>
+    <div class="ps done"><b>B1 · Skeleton</b>A running API with a health check.<br><span class="tag">✓ Done &amp; pushed</span></div>
+    <div class="ps now"><b>B2 · GET /calls</b>The PBX can fetch a call list (fake data).<br><span class="tag">Built · fix + commit</span></div>
+    <div class="ps next"><b>B3 · POST /calls</b>The PBX reports what happened; the API answers what to do.<br><span class="tag">Next</span></div>
+    <div class="ps next"><b>B4 · Security</b>API key + IP allowlist.<br><span class="tag">Later</span></div>
+    <div class="ps next"><b>B5–B9</b>Conversation, no-contact rule, database, tests, eCW write-back.<br><span class="tag">Later</span></div>
+  </div>
+</div>
+
+<!-- 2. ARCHITECTURE -->
+<div class="card">
+  <h2>2. The big picture: who talks to what</h2>
+  <p class="lead">Solid boxes exist now. Dashed boxes are planned for later steps.</p>
+  <svg viewBox="0 0 1120 430" role="img" aria-label="Architecture diagram">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#475569"/></marker>
+      <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/></marker>
+    </defs>
+    <style>
+      .bx { stroke-width: 2; rx: 12; }
+      .h { font: 700 15px "Segoe UI", sans-serif; fill: #0f172a; }
+      .s { font: 12.5px "Segoe UI", sans-serif; fill: #475569; }
+      .m { font: 12px Consolas, monospace; fill: #334155; }
+      .g { font: 12.5px "Segoe UI", sans-serif; fill: #94a3b8; }
+      .gh { font: 700 14px "Segoe UI", sans-serif; fill: #94a3b8; }
+    </style>
+
+    <!-- callers -->
+    <rect class="bx" x="20" y="60" width="200" height="110" fill="#eff6ff" stroke="#2563eb"/>
+    <text class="h" x="40" y="90">📞 PBX</text>
+    <text class="s" x="40" y="112">Built by the other team.</text>
+    <text class="s" x="40" y="130">For now: you, testing in</text>
+    <text class="s" x="40" y="148">the browser at /docs</text>
+
+    <rect class="bx" x="20" y="250" width="200" height="100" fill="#f1f5f9" stroke="#475569"/>
+    <text class="h" x="40" y="280">🖥️ Browser / IT</text>
+    <text class="s" x="40" y="302">Monitoring checks that</text>
+    <text class="s" x="40" y="320">the API is up</text>
+
+    <!-- API big box -->
+    <rect class="bx" x="300" y="20" width="560" height="390" fill="#faf8ff" stroke="#7c3aed" stroke-width="2.5"/>
+    <text class="h" x="320" y="48">OmniConnect API  (backend/app)  ·  runs with: uv run fastapi dev app/main.py</text>
+
+    <!-- main.py -->
+    <rect class="bx" x="325" y="235" width="230" height="130" fill="#fff" stroke="#7c3aed"/>
+    <text class="h" x="345" y="262">main.py</text>
+    <text class="s" x="345" y="284">Creates the app.</text>
+    <text class="m" x="345" y="306">GET /api/health</text>
+    <text class="s" x="345" y="326">→ {"status": "ok"}</text>
+    <text class="s" x="345" y="348">Plugs in the PBX router</text>
+
+    <!-- router.py -->
+    <rect class="bx" x="325" y="70" width="230" height="130" fill="#fff" stroke="#7c3aed"/>
+    <text class="h" x="345" y="97">pbx/router.py</text>
+    <text class="m" x="345" y="120">GET /api/pbx/v1/calls</text>
+    <text class="s" x="345" y="142">Returns the calls to place.</text>
+    <text class="s" x="345" y="162">Now: FAKE_CALLS list</text>
+    <text class="s" x="345" y="182">(Test Patient, TEST000001)</text>
+
+    <!-- models.py -->
+    <rect class="bx" x="605" y="70" width="230" height="130" fill="#fff" stroke="#7c3aed"/>
+    <text class="h" x="625" y="97">pbx/models.py</text>
+    <text class="s" x="625" y="120">The "shape" of the JSON:</text>
+    <text class="m" x="625" y="142">CallBatch › Call ›</text>
+    <text class="m" x="625" y="162">Patient › Appointment</text>
+    <text class="s" x="625" y="184">Matches the PBX doc §4.1</text>
+
+    <!-- future inside API -->
+    <rect class="bx" x="605" y="235" width="230" height="58" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 5"/>
+    <text class="gh" x="625" y="260">POST /calls  (B3)</text>
+    <text class="g" x="625" y="280">receive events, answer say + action</text>
+    <rect class="bx" x="605" y="307" width="230" height="58" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 5"/>
+    <text class="gh" x="625" y="332">Security + conversation (B4–B6)</text>
+    <text class="g" x="625" y="352">API key · intent · no-contact days</text>
+
+    <!-- external future -->
+    <rect class="bx" x="910" y="70" width="190" height="90" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 5"/>
+    <text class="gh" x="928" y="98">🗄️ SQL Server (B7)</text>
+    <text class="g" x="928" y="120">Real calls from the</text>
+    <text class="g" x="928" y="138">day-prior query</text>
+    <rect class="bx" x="910" y="190" width="190" height="80" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 5"/>
+    <text class="gh" x="928" y="218">🤖 Claude (B5)</text>
+    <text class="g" x="928" y="240">Understand unclear replies</text>
+    <rect class="bx" x="910" y="300" width="190" height="80" fill="#f8fafc" stroke="#94a3b8" stroke-dasharray="6 5"/>
+    <text class="gh" x="928" y="328">🏥 eCW (B9)</text>
+    <text class="g" x="928" y="350">Write CONFPHONE only</text>
+
+    <!-- arrows now -->
+    <line x1="220" y1="115" x2="320" y2="125" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+    <text class="s" x="232" y="105">GET</text>
+    <line x1="220" y1="300" x2="320" y2="300" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+    <text class="s" x="232" y="292">GET</text>
+    <line x1="555" y1="135" x2="600" y2="135" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+    <text class="s" x="560" y="127">uses</text>
+    <line x1="440" y1="235" x2="440" y2="205" stroke="#475569" stroke-width="2" marker-end="url(#ar)"/>
+    <text class="s" x="448" y="225">includes</text>
+    <!-- arrows future -->
+    <line x1="835" y1="115" x2="905" y2="115" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arg)"/>
+    <line x1="835" y1="300" x2="905" y2="235" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arg)"/>
+    <line x1="835" y1="264" x2="905" y2="335" stroke="#94a3b8" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#arg)"/>
+  </svg>
+</div>
+
+<!-- 3. REQUEST JOURNEY -->
+<div class="card">
+  <h2>3. What happens when someone opens <code>/api/pbx/v1/calls</code></h2>
+  <p class="lead">Following one request from start to finish.</p>
+  <ol class="steps">
+    <li><b>The caller sends a GET request</b> to <code>http://localhost:8000/api/pbx/v1/calls?limit=50</code>. Today that's you, clicking "Try it out" on the <code>/docs</code> page. Later it will be the PBX.</li>
+    <li><b>FastAPI looks up the address.</b> <code>main.py</code> plugged in the PBX router with <code>include_router</code>, so FastAPI knows that <code>/api/pbx/v1/calls</code> belongs to <code>get_calls()</code> in <code>router.py</code>.</li>
+    <li><b><code>get_calls()</code> runs.</b> It takes up to <code>limit</code> calls from <code>FAKE_CALLS</code> and wraps them in a <code>CallBatch</code> with a batch ID and the current time.</li>
+    <li><b>The models check the data.</b> Because of <code>response_model=CallBatch</code>, FastAPI checks every field against <code>models.py</code>: names, types, dates. A missing or wrong field becomes an error on our side, so the PBX never gets a broken answer.</li>
+    <li><b>The caller gets JSON back</b>, in exactly the layout promised to the PBX team in <code>PBX_INTEGRATION_API.md</code> §4.1.</li>
+  </ol>
+</div>
+
+<!-- 4. DATA SHAPE -->
+<div class="card">
+  <h2>4. The shape of the call list (<code>models.py</code>)</h2>
+  <p class="lead">Each box holds the boxes inside it. One call can cover a whole family, and one patient can have more than one appointment.</p>
+  <div class="nest">
+    <div class="t">CallBatch <small>the whole answer</small></div>
+    <div class="flds">batch_id · generated_at · calls[ ]</div>
+    <div class="nest">
+      <div class="t">Call <small>one phone call to dial</small></div>
+      <div class="flds">attempt_id · call_id · attempt_number · call_type · phone · language · operator_extension · do_not_call_after · patients[ ]</div>
+      <div class="nest">
+        <div class="t">Patient <small>a person on that call (a family can share one call)</small></div>
+        <div class="flds">patient_name · mrn · appointments[ ]</div>
+        <div class="nest">
+          <div class="t">Appointment <small>a visit to confirm</small></div>
+          <div class="flds">appointment_id · visit_datetime · arrival_datetime · facility · facility_address · provider</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 5. FILE MAP -->
+<div class="card">
+  <h2>5. Every file and what it does</h2>
+  <p class="lead">Purple = code · teal = settings and tools · orange = added in B2, not committed yet.</p>
+  <div class="files">
+    <div class="file"><span class="when">B1</span><h3>backend/app/main.py</h3><p>The starting point. Creates the FastAPI app, defines <code>/api/health</code>, and plugs in the PBX router.</p></div>
+    <div class="file"><span class="when">B1</span><h3>backend/app/__init__.py</h3><p>Empty. It tells Python that <code>app</code> is a package, so <code>from app.pbx...</code> imports work.</p></div>
+    <div class="file new"><span class="when">B2</span><h3>backend/app/pbx/router.py</h3><p>All PBX addresses live here, under <code>/api/pbx/v1</code>. Now: <code>GET /calls</code> with fake data. Next (B3): <code>POST /calls</code>.</p></div>
+    <div class="file new"><span class="when">B2</span><h3>backend/app/pbx/models.py</h3><p>The data shapes (Pydantic models). They check that every answer has the right fields and types, and they show up on the <code>/docs</code> page.</p></div>
+    <div class="file new"><span class="when">B2</span><h3>backend/app/pbx/__init__.py</h3><p>Empty. It makes <code>pbx</code> a package too.</p></div>
+    <div class="file cfg"><span class="when">B1</span><h3>backend/pyproject.toml</h3><p>The project's ID card: name, Python version, and the packages it needs (FastAPI, SQLAlchemy, pytest…).</p></div>
+    <div class="file cfg"><span class="when">B1</span><h3>backend/uv.lock</h3><p>The exact versions of every package, so all PCs and servers install the same ones. Managed by uv; don't edit it by hand.</p></div>
+    <div class="file cfg"><span class="when">B1</span><h3>backend/.venv/</h3><p>The installed packages for this project only. On your PC only; <code>.gitignore</code> keeps it out of Git.</p></div>
+    <div class="file cfg"><span class="when">A</span><h3>.gitignore</h3><p>A list of what Git must never upload: <code>.env</code> secrets, <code>.venv</code>, exports (<code>.csv</code>, <code>.xlsx</code>).</p></div>
+    <div class="file cfg"><span class="when">A</span><h3>db/ · docs/</h3><p>The eCW queries, the plans, the PBX document, the diagrams, and <code>TODO.md</code>.</p></div>
+  </div>
+</div>
+
+<!-- 6. FIX NEEDED -->
+<div class="card">
+  <h2>6. ⚠️ One fix before committing B2</h2>
+  <div class="alert">
+    <h3>In <code>main.py</code>, the router lines come before the app exists</h3>
+    Python reads a file from top to bottom. <code>app.include_router(...)</code> uses <code>app</code>, but <code>app</code> is only created a few lines later. So the server stops with <code>NameError: name 'app' is not defined</code>.
+    <br><b>The fix:</b> move <code>app.include_router(pbx_router)</code> to <b>after</b> <code>app = FastAPI(...)</code>. The <code>import</code> line can stay at the top.
+    <div class="two">
+      <pre><span class="bad">✗ Now</span>
+from fastapi import FastAPI
+
+from app.pbx.router import router as pbx_router
+
+<span class="bad">app.include_router(pbx_router)   # app doesn't exist yet</span>
+
+app = FastAPI(title="OmniConnect API")</pre>
+      <pre><span class="good">✓ Fixed</span>
+from fastapi import FastAPI
+
+from app.pbx.router import router as pbx_router
+
+app = FastAPI(title="OmniConnect API")
+<span class="good">app.include_router(pbx_router)   # now app exists</span>
+</pre>
+    </div>
+  </div>
+</div>
+
+<!-- 7. TOOLS -->
+<div class="card">
+  <h2>7. The tools around the code</h2>
+  <div class="tools">
+    <div class="tool"><b>Git</b>Takes snapshots (commits) of the project on your PC.</div>
+    <div class="tool"><b>GitHub</b>The private online copy, updated with <code>git push</code>. Repo: <code>Yehudit-Refuah/OmniConnect</code>.</div>
+    <div class="tool"><b>uv</b>Installs Python packages and runs the app: <code>uv sync</code>, <code>uv run …</code></div>
+    <div class="tool"><b>FastAPI <code>/docs</code></b>An automatic page for trying every endpoint: <code>localhost:8000/docs</code></div>
+  </div>
+</div>
+
+<footer>OmniConnect · build progress overview · all names, numbers and IDs shown are fake test data.</footer>
+</div>
+</body>
+</html>
