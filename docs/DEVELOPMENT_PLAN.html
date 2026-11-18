@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniConnect · Development Plan</title>
+<style>
+  :root{
+    --navy:#0f2a4a; --navy-2:#1b3d66; --teal:#0e7c86; --teal-soft:#e3f3f4;
+    --ink:#1d2733; --muted:#5b6876; --line:#dde3ea; --bg:#f5f7fa; --card:#fff;
+    --green:#1f8a4c; --green-soft:#e6f4ec; --amber:#b86e00; --amber-soft:#fff4e0;
+    --red:#b3261e; --red-soft:#fdecea; --violet:#5b4bb7; --violet-soft:#eeebfa;
+    --radius:12px; --shadow:0 1px 2px rgba(15,42,74,.06),0 4px 14px rgba(15,42,74,.06);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+       color:var(--ink);background:var(--bg);line-height:1.55;font-size:15px}
+  code{font-family:Consolas,"Cascadia Mono",monospace;font-size:.88em;background:#eef2f6;
+       padding:.1em .35em;border-radius:4px}
+  a{color:var(--teal)}
+
+  /* ---------- layout ---------- */
+  .layout{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+  nav.side{position:sticky;top:0;height:100vh;overflow:auto;background:var(--navy);color:#cfdbea;
+           padding:28px 18px}
+  nav.side .brand{font-weight:700;font-size:20px;color:#fff;letter-spacing:.3px}
+  nav.side .brand span{color:#6fd3da}
+  nav.side .sub{font-size:12px;color:#9fb3cb;margin:2px 0 22px}
+  nav.side a{display:block;color:#cfdbea;text-decoration:none;padding:7px 10px;border-radius:8px;font-size:14px}
+  nav.side a:hover{background:var(--navy-2);color:#fff}
+  nav.side a b{display:inline-block;width:22px;color:#6fd3da;font-weight:600}
+  main{padding:0 0 60px}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 40px}
+
+  /* ---------- hero ---------- */
+  .hero{background:linear-gradient(135deg,var(--navy) 0%,#134a73 55%,var(--teal) 100%);color:#fff;
+        padding:56px 0 48px;margin-bottom:34px}
+  .eyebrow{text-transform:uppercase;letter-spacing:1.6px;font-size:12px;color:#9fe3e8;font-weight:600}
+  .hero h1{font-size:38px;margin:8px 0 10px;line-height:1.15}
+  .hero p.lead{font-size:17px;max-width:720px;color:#dbe7f3;margin:0 0 22px}
+  .meta{display:flex;flex-wrap:wrap;gap:10px}
+  .pill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:5px 12px;
+        border-radius:999px;font-size:13px}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:30px}
+  .stat{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);border-radius:var(--radius);padding:14px 16px}
+  .stat .n{font-size:28px;font-weight:700}
+  .stat .l{font-size:13px;color:#cfe2ef}
+
+  /* ---------- sections ---------- */
+  section{margin:0 0 44px;scroll-margin-top:20px}
+  h2{font-size:24px;color:var(--navy);margin:0 0 6px;display:flex;align-items:center;gap:12px}
+  h2 .num{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:10px;
+          background:var(--teal);color:#fff;font-size:16px}
+  .intro{color:var(--muted);margin:0 0 18px;max-width:800px}
+  h3{font-size:17px;color:var(--navy);margin:22px 0 10px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:20px 22px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+
+  /* ---------- steps (what we build) ---------- */
+  .steps{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;counter-reset:s}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px 14px;
+        box-shadow:var(--shadow);position:relative}
+  .step .ic{font-size:22px}
+  .step h4{margin:6px 0 4px;font-size:15px;color:var(--navy)}
+  .step p{margin:0;font-size:13px;color:var(--muted)}
+  .step .k{position:absolute;top:10px;right:12px;font-size:12px;color:#a7b3c0;font-weight:700}
+  .callout{border-radius:var(--radius);padding:14px 18px;margin-top:16px;display:flex;gap:12px;align-items:flex-start}
+  .callout.info{background:var(--teal-soft);border:1px solid #b8e0e3}
+  .callout.warn{background:var(--amber-soft);border:1px solid #f3d29a}
+  .callout.danger{background:var(--red-soft);border:1px solid #f3c1bc}
+  .callout .ic{font-size:20px;line-height:1.2}
+
+  /* ---------- tables ---------- */
+  table{width:100%;border-collapse:collapse;background:var(--card);border-radius:var(--radius);overflow:hidden;
+        box-shadow:var(--shadow);border:1px solid var(--line);font-size:14px}
+  th{background:#eef3f8;color:var(--navy);text-align:left;font-weight:600;padding:10px 14px;border-bottom:1px solid var(--line)}
+  td{padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  tr:last-child td{border-bottom:none}
+  td.tight{white-space:nowrap}
+  .tag{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+  .tag.changed{background:var(--amber-soft);color:var(--amber)}
+  .tag.decide{background:var(--violet-soft);color:var(--violet)}
+  .tag.ok{background:var(--green-soft);color:var(--green)}
+  .tag.exists{background:var(--teal-soft);color:var(--teal)}
+
+  /* ---------- architecture ---------- */
+  .arch{display:grid;grid-template-columns:1fr 56px 1.5fr 56px 1fr;align-items:stretch}
+  .zone{border:2px dashed var(--line);border-radius:16px;padding:14px;background:#fbfcfe}
+  .zone .zt{font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);font-weight:700;margin-bottom:10px}
+  .zone.omni{border-color:#9bd3d8;background:#f4fbfb}
+  .box{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:10px;
+       padding:10px 12px;margin-bottom:10px;box-shadow:var(--shadow)}
+  .box:last-child{margin-bottom:0}
+  .box b{display:block;color:var(--navy);font-size:14px}
+  .box small{color:var(--muted);font-size:12.5px}
+  .box.teal{border-left-color:var(--teal)} .box.violet{border-left-color:var(--violet)}
+  .box.amber{border-left-color:var(--amber)} .box.db{border-left-color:#7a8aa0}
+  .conn{display:flex;flex-direction:column;justify-content:center;align-items:center;gap:26px;color:#8a98a8;font-size:22px}
+  .conn span{display:block;text-align:center;line-height:1}
+  .conn small{display:block;font-size:10px;color:var(--muted);margin-top:2px}
+  .omni-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .omni-grid .box{margin:0}
+  .people{display:flex;justify-content:space-between;margin-top:12px;gap:12px}
+  .person{flex:1;text-align:center;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:8px;
+          font-size:13.5px;color:var(--navy);box-shadow:var(--shadow)}
+
+  /* ---------- daily flow ---------- */
+  .flow{list-style:none;margin:0;padding:0;position:relative}
+  .flow:before{content:"";position:absolute;left:17px;top:6px;bottom:6px;width:2px;background:var(--line)}
+  .flow li{position:relative;padding:0 0 14px 52px}
+  .flow li .dot{position:absolute;left:4px;top:0;width:28px;height:28px;border-radius:50%;background:var(--teal);color:#fff;
+                display:grid;place-items:center;font-size:13px;font-weight:700;box-shadow:0 0 0 4px var(--bg)}
+  .flow li.loop .dot{background:var(--violet)}
+  .flow li b{color:var(--navy)}
+  .flow li .who{font-size:12px;color:var(--muted);margin-left:6px}
+
+  /* ---------- repo tree ---------- */
+  pre.tree{background:#0f1f33;color:#d6e2f0;border-radius:var(--radius);padding:18px 20px;overflow:auto;font-size:13px;line-height:1.6;margin:0}
+  pre.tree .c{color:#7fa3c7} pre.tree .d{color:#6fd3da;font-weight:600}
+
+  /* ---------- milestones ---------- */
+  .track{display:flex;gap:0;overflow-x:auto;padding:6px 2px 14px;margin-bottom:8px}
+  .ms{flex:1 0 96px;text-align:center;position:relative}
+  .ms:before{content:"";position:absolute;top:21px;left:0;right:0;height:3px;background:var(--line);z-index:0}
+  .ms:first-child:before{left:50%} .ms:last-child:before{right:50%}
+  .ms .bubble{position:relative;z-index:1;width:44px;height:44px;border-radius:50%;margin:0 auto 8px;display:grid;place-items:center;
+              color:#fff;font-weight:700;font-size:14px;box-shadow:0 0 0 4px var(--bg)}
+  .ms .t{font-size:12.5px;color:var(--navy);font-weight:600;line-height:1.3}
+  .ms .p{font-size:11px;color:var(--muted)}
+  .ph-safe .bubble{background:var(--teal)} .ph-test .bubble{background:var(--violet)} .ph-live .bubble{background:var(--green)}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:18px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+  details.mcard{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:10px;overflow:hidden}
+  details.mcard summary{list-style:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;gap:14px}
+  details.mcard summary::-webkit-details-marker{display:none}
+  details.mcard summary .id{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;color:#fff;font-weight:700;flex:none}
+  details.mcard summary .ttl{flex:1}
+  details.mcard summary .ttl b{color:var(--navy);font-size:15.5px}
+  details.mcard summary .ttl div{font-size:13px;color:var(--muted)}
+  details.mcard summary .chev{color:#9aa7b5;transition:transform .2s}
+  details.mcard[open] summary .chev{transform:rotate(90deg)}
+  .size{font-size:12px;font-weight:700;padding:3px 9px;border-radius:6px;background:#eef2f6;color:var(--navy)}
+  .mbody{padding:0 18px 16px 74px}
+  .mbody ul{margin:0 0 10px;padding-left:18px}
+  .mbody li{margin:3px 0}
+  .done{background:var(--green-soft);border-left:4px solid var(--green);padding:9px 12px;border-radius:8px;font-size:14px}
+  .done b{color:var(--green)}
+  .bg-teal{background:var(--teal)} .bg-violet{background:var(--violet)} .bg-green{background:var(--green)}
+
+  /* ---------- rules ---------- */
+  .rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .rule{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
+  .rule .fn{font-family:Consolas,monospace;font-size:12.5px;color:var(--teal);font-weight:600}
+  .rule p{margin:4px 0 0;font-size:13.5px}
+  .rule .note{font-size:12px;color:var(--muted);margin-top:4px}
+  .codes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .codes code{background:var(--navy);color:#fff;font-size:11.5px}
+
+  /* ---------- security ---------- */
+  .rulelist{counter-reset:r;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .rl{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px 14px 56px;position:relative;box-shadow:var(--shadow)}
+  .rl:before{counter-increment:r;content:counter(r);position:absolute;left:14px;top:14px;width:28px;height:28px;border-radius:8px;
+             background:var(--red-soft);color:var(--red);display:grid;place-items:center;font-weight:700}
+  .rl b{color:var(--navy)}
+  .rl p{margin:3px 0 0;font-size:13.5px;color:var(--muted)}
+
+  /* ---------- risk ---------- */
+  .lvl{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+  .lvl.h{background:var(--red)} .lvl.m{background:var(--amber)} .lvl.l{background:var(--green)}
+
+  footer{color:var(--muted);font-size:13px;text-align:center;margin-top:30px}
+
+  /* ---------- responsive / print ---------- */
+  @media (max-width:1000px){
+    .layout{grid-template-columns:1fr} nav.side{display:none}
+    .steps{grid-template-columns:repeat(3,1fr)} .stats{grid-template-columns:repeat(2,1fr)}
+    .grid2,.grid3,.rules,.rulelist{grid-template-columns:1fr}
+    .arch{grid-template-columns:1fr} .conn{flex-direction:row;padding:8px 0} .conn span{transform:rotate(90deg)}
+    .wrap{padding:0 20px}
+  }
+  @media print{
+    nav.side{display:none} .layout{grid-template-columns:1fr} body{background:#fff}
+    .hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    details.mcard{break-inside:avoid} section{break-inside:avoid-page}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+
+<nav class="side">
+  <div class="brand">Omni<span>Connect</span></div>
+  <div class="sub">Development Plan · Phase 3</div>
+  <a href="#build"><b>1</b>What we're building</a>
+  <a href="#tech"><b>2</b>Technology</a>
+  <a href="#arch"><b>3</b>Architecture</a>
+  <a href="#repo"><b>4</b>Repository layout</a>
+  <a href="#db"><b>5</b>Database</a>
+  <a href="#rules"><b>6</b>Rules engine</a>
+  <a href="#milestones"><b>7</b>Milestones</a>
+  <a href="#decisions"><b>8</b>Decisions needed</a>
+  <a href="#security"><b>9</b>Security &amp; HIPAA</a>
+  <a href="#testing"><b>10</b>Testing</a>
+  <a href="#risks"><b>11</b>Risks</a>
+</nav>
+
+<main>
+  <header class="hero">
+    <div class="wrap">
+      <div class="eyebrow">Refuah Health Center · Patient Engagement Suite</div>
+      <h1>OmniConnect Development Plan</h1>
+      <p class="lead">Phase 3: Automated Appointment Confirmations &amp; Reminders. Read from eCW, contact patients by call and text, write the result back, and give managers a full audit trail.</p>
+      <div class="meta">
+        <span class="pill">Owner: ygarbuz</span>
+        <span class="pill">v1.0 draft · 2026-11-10</span>
+        <span class="pill">Python · React · SQL Server · GitHub</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="n">4</div><div class="l">Sites: Main, Twin, Route 59, Wilson</div></div>
+        <div class="stat"><div class="n">10</div><div class="l">Milestones, M0 → M9</div></div>
+        <div class="stat"><div class="n">7</div><div class="l">eCW status codes written back</div></div>
+        <div class="stat"><div class="n">0</div><div class="l">Patients contacted until pilot</div></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+
+  <!-- 1 ============================================================ -->
+  <section id="build">
+    <h2><span class="num">1</span>What we're building</h2>
+    <p class="intro">Every day the system runs six steps. The same platform later carries Phases 1, 2, 4 and 5. Phase 3 comes first because it's mostly fixed rules, has clear value, and needs no AI.</p>
+    <div class="steps">
+      <div class="step"><span class="k">1</span><div class="ic">📥</div><h4>Read</h4><p>Tomorrow's PENDING appointments from eCW</p></div>
+      <div class="step"><span class="k">2</span><div class="ic">🧠</div><h4>Decide</h4><p>Family grouping, Spanish, arrival times, Shabbat rule</p></div>
+      <div class="step"><span class="k">3</span><div class="ic">📞</div><h4>Contact</h4><p>Call + text, voicemail, afternoon &amp; evening retries</p></div>
+      <div class="step"><span class="k">4</span><div class="ic">💬</div><h4>Understand</h4><p>Confirm, cancel or reschedule; transfer to reception</p></div>
+      <div class="step"><span class="k">5</span><div class="ic">🔁</div><h4>Write back</h4><p>CONFPHONE, CONFSMS, CANCPHONE … into eCW</p></div>
+      <div class="step"><span class="k">6</span><div class="ic">📊</div><h4>Show</h4><p>Manager dashboard with a full audit trail</p></div>
+    </div>
+    <div class="callout info"><div class="ic">🛡️</div><div><b>Guiding principle:</b> the system never contacts a real patient until a step has been tested, reviewed and deliberately switched on (shadow mode, then allowlist mode, then pilot).</div></div>
+  </section>
+
+  <!-- 2 ============================================================ -->
+  <section id="tech">
+    <h2><span class="num">2</span>Technology choices</h2>
+    <p class="intro">GitHub, Python and React are a good fit, so we keep them. Two choices changed after the first session, because Refuah runs SQL Server on its own servers.</p>
+    <table>
+      <tr><th style="width:22%">Layer</th><th style="width:30%">Choice</th><th>Why</th></tr>
+      <tr><td>Source control</td><td><b>GitHub</b> (private repo)</td><td>Industry standard; built-in reviews (pull requests) and automation (Actions).</td></tr>
+      <tr><td>Backend</td><td><b>Python 3.13 + FastAPI</b></td><td>Easy to learn; best ecosystem for the later AI phases; automatic API docs.</td></tr>
+      <tr><td>Python tooling</td><td><b>uv · Ruff · pytest</b></td><td>One fast tool to install Python and packages; formatting; tests.</td></tr>
+      <tr><td>Database access</td><td><b>SQLAlchemy 2 + pyodbc</b> + ODBC Driver 18</td><td>The standard way for Python to talk to SQL Server.</td></tr>
+      <tr><td>OmniConnect database</td><td><b>SQL Server</b> (your local database) <span class="tag changed">changed from PostgreSQL</span></td><td>Already holds <code>vw_TestPatients</code> and the no-contact calendar; DBAs already back it up and secure it; you know SSMS.</td></tr>
+      <tr><td>Background jobs</td><td><b>APScheduler</b> in a worker process</td><td>9:00 AM job, retries, same-day reminders. No extra servers needed.</td></tr>
+      <tr><td>Dashboard</td><td><b>React + TypeScript + Vite</b></td><td>Most widely used UI library; TypeScript catches mistakes as you type.</td></tr>
+      <tr><td>UI components</td><td><b>MUI + MUI X Data Grid</b> · TanStack Query</td><td>Ready-made tables, search, filters, CSV export; live-refreshing data.</td></tr>
+      <tr><td>Staff login</td><td><b>Microsoft Entra ID</b></td><td>Refuah Microsoft accounts; roles from AD groups.</td></tr>
+      <tr><td>Calls &amp; texts</td><td>PBX API · Azure Communication Services · Twilio <span class="tag decide">decide D1</span></td><td>Depends on how calls transfer into x1100 / x1301 / x7724 / x1160.</td></tr>
+      <tr><td>Hosting</td><td><b>Windows server on Refuah's own network</b> <span class="tag changed">changed from Azure</span></td><td>eCW and the local database are on Refuah's servers, and the PBX most likely is too, so this is the simplest network path.</td></tr>
+    </table>
+    <div class="grid3" style="margin-top:16px">
+      <div class="card"><b>C# / .NET + Blazor</b><p style="margin:6px 0 0;color:var(--muted);font-size:13.5px">Fits a Microsoft shop, but it's harder to learn and weaker for the AI phases. Only if IT requires it.</p></div>
+      <div class="card"><b>Plain JavaScript</b><p style="margin:6px 0 0;color:var(--muted);font-size:13.5px">Slightly easier on day one, but you'd lose TypeScript's safety net.</p></div>
+      <div class="card"><b>Power Apps / Automate</b><p style="margin:6px 0 0;color:var(--muted);font-size:13.5px">Fine for simple forms; not for call flows, retries and audit requirements at this level.</p></div>
+    </div>
+  </section>
+
+  <!-- 3 ============================================================ -->
+  <section id="arch">
+    <h2><span class="num">3</span>Architecture</h2>
+    <p class="intro">Three zones. OmniConnect sits in the middle: it reads from eCW, talks to patients through the call/SMS provider, and writes results back.</p>
+    <div class="card">
+      <div class="arch">
+        <div class="zone">
+          <div class="zt">eClinicalWorks</div>
+          <div class="box db"><b>🗄️ mobiledoc</b><small>ECWNODEAG01 · day-prior query, read-only</small></div>
+          <div class="box violet"><b>Status write-back</b><small>eCW-supported interface <span class="tag decide">D2</span></small></div>
+        </div>
+        <div class="conn"><span>⇄<small>read / write</small></span></div>
+        <div class="zone omni">
+          <div class="zt">OmniConnect server</div>
+          <div class="omni-grid">
+            <div class="box teal"><b>⏱️ Worker</b><small>Scheduler + jobs: 9:00 AM run, retries, status re-checks</small></div>
+            <div class="box teal"><b>🧠 Rules engine</b><small>Pure Python, no DB or network; fully tested</small></div>
+            <div class="box teal"><b>🔌 Backend API</b><small>FastAPI: dashboard data + provider webhooks</small></div>
+            <div class="box teal"><b>📊 Dashboard</b><small>React app for managers</small></div>
+          </div>
+          <div class="box db" style="margin-top:10px"><b>🗄️ OmniConnect DB</b><small>Local SQL Server: snapshots, attempts, responses, append-only audit log</small></div>
+        </div>
+        <div class="conn"><span>⇄<small>send / webhooks</small></span></div>
+        <div class="zone">
+          <div class="zt">Calls &amp; texts</div>
+          <div class="box amber"><b>📞 Voice / SMS provider</b><small>or PBX API <span class="tag decide">D1</span></small></div>
+          <div class="box amber"><b>☎️ PBX queues</b><small>x1100 · x1301 · x7724 · x1160</small></div>
+        </div>
+      </div>
+      <div class="people">
+        <div class="person">👩‍💼 Managers sign in with Entra ID → Dashboard</div>
+        <div class="person">📱 Patients ⇄ calls and texts</div>
+      </div>
+    </div>
+
+    <h3>Daily flow</h3>
+    <div class="card">
+      <ol class="flow">
+        <li><span class="dot">1</span><b>9:00 AM: is today a run day?</b><span class="who">Worker · no-contact calendar</span></li>
+        <li><span class="dot">2</span><b>Run the day-prior query</b> on eCW and save a snapshot<span class="who">Worker → eCW</span></li>
+        <li><span class="dot">3</span><b>Build contact groups, messages and the schedule</b><span class="who">Rules engine</span></li>
+        <li class="loop"><span class="dot">4</span><b>For each group:</b> re-check status (still PENDING?) and check the send time is allowed (Shabbat/holiday)<span class="who">Worker</span></li>
+        <li class="loop"><span class="dot">5</span><b>Call + text the patient</b>; the provider reports the result by webhook<span class="who">Provider → API</span></li>
+        <li class="loop"><span class="dot">6</span><b>Parse the reply → outcome → status code</b>, write to eCW, log in the audit trail<span class="who">API → eCW</span></li>
+        <li><span class="dot">7</span><b>Afternoon + evening retries</b> for anyone not reached<span class="who">Worker</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 4 ============================================================ -->
+  <section id="repo">
+    <h2><span class="num">4</span>Repository layout</h2>
+    <p class="intro">One GitHub repository holds everything, so the query, the backend and the dashboard always change together.</p>
+<pre class="tree"><span class="d">OmniConnect/</span>
+├── README.md                  <span class="c">← what the project is + how to run it</span>
+├── .gitignore                 <span class="c">← files Git must never save (.env, data exports)</span>
+├── .env.example               <span class="c">← settings list with fake values</span>
+├── <span class="d">docs/</span>                      <span class="c">← plans, guides, decisions/</span>
+├── <span class="d">db/</span>
+│   ├── <span class="d">ecw/</span>                   <span class="c">← eCW read queries (exists today)</span>
+│   └── <span class="d">omni/</span>                  <span class="c">← OmniConnect tables (migrations)</span>
+├── <span class="d">backend/</span>
+│   ├── pyproject.toml         <span class="c">← Python dependencies (uv)</span>
+│   ├── <span class="d">app/</span>
+│   │   ├── main.py            <span class="c">← FastAPI starts here</span>
+│   │   ├── <span class="d">api/</span>               <span class="c">← endpoints: dashboard + webhooks</span>
+│   │   ├── <span class="d">ecw/</span>               <span class="c">← eCW queries + status write-back</span>
+│   │   ├── <span class="d">rules/</span>             <span class="c">← rules engine (pure functions)</span>
+│   │   ├── <span class="d">channels/</span>          <span class="c">← voice + SMS provider code</span>
+│   │   ├── <span class="d">worker/</span>            <span class="c">← scheduler and jobs</span>
+│   │   ├── <span class="d">db/</span>                <span class="c">← tables + Alembic migrations</span>
+│   │   └── audit.py           <span class="c">← one function every action calls</span>
+│   └── <span class="d">tests/</span>
+├── <span class="d">frontend/</span>
+│   └── <span class="d">src/</span>  pages/ · components/ · api/
+└── <span class="d">.github/</span>   workflows/ci.yml · pull_request_template.md</pre>
+  </section>
+
+  <!-- 5 ============================================================ -->
+  <section id="db">
+    <h2><span class="num">5</span>OmniConnect database</h2>
+    <p class="intro">Tables live in the local SQL Server database under the schema <code>omni</code>. Alembic migrations create them, so every environment has the same tables.</p>
+    <table>
+      <tr><th style="width:28%">Table</th><th style="width:22%">One row per</th><th>Key columns</th></tr>
+      <tr><td><code>omni.run</code></td><td>daily job run</td><td>run date, target dates, start/finish, row count, errors</td></tr>
+      <tr><td><code>omni.appointment_snapshot</code></td><td>appointment per run</td><td>eCW <code>encounterID</code>, patient, provider, site, time, query flags</td></tr>
+      <tr><td><code>omni.contact_group</code></td><td>call/text unit</td><td>phone used, language, message text, channel plan</td></tr>
+      <tr><td><code>omni.contact_group_member</code></td><td>appointment in a group</td><td>group ↔ appointment</td></tr>
+      <tr><td><code>omni.contact_attempt</code></td><td>each call or text</td><td>channel, phone, scheduled/sent time, result, provider message ID</td></tr>
+      <tr><td><code>omni.patient_response</code></td><td>each reply</td><td>raw text / keypad / speech, parsed outcome, confidence</td></tr>
+      <tr><td><code>omni.transfer</code></td><td>each queue transfer</td><td>extension, wait estimate given, actual wait, agent</td></tr>
+      <tr><td><code>omni.status_update</code></td><td>each eCW write-back</td><td>old → new code, sent at, confirmed at, error</td></tr>
+      <tr><td><code>omni.audit_event</code></td><td>everything that happens</td><td>when, who, what, which appointment. <span class="tag ok">insert-only</span></td></tr>
+      <tr><td><code>omni.setting</code></td><td>adjustable value</td><td>retry times, morning start, quiet hours, allowlist mode</td></tr>
+      <tr><td><code>dbo.omni_no_contact_days</code></td><td>holiday date</td><td><span class="tag exists">exists already</span> <code>03_no_contact_calendar.sql</code></td></tr>
+    </table>
+    <div class="callout warn"><div class="ic">⚠️</div><div>We never copy more PHI than the query already returns, and we never store it anywhere except this database: not in logs, files or Git.</div></div>
+  </section>
+
+  <!-- 6 ============================================================ -->
+  <section id="rules">
+    <h2><span class="num">6</span>Rules engine: requirement → code</h2>
+    <p class="intro">Every requirement becomes one small, tested Python function in <code>backend/app/rules/</code>. This is the checklist for milestone M2.</p>
+    <div class="rules">
+      <div class="rule"><div class="fn">group_contacts()</div><p>Provider + resource on the same day → one call; family members on the same day → one call/text</p><div class="note">uses family_group_key</div></div>
+      <div class="rule"><div class="fn">build_message(group, lang)</div><p>Name, provider, time, site + address, visit type (not for new patients)</p><div class="note">English + Spanish templates</div></div>
+      <div class="rule"><div class="fn">choose_language()</div><p>Spanish for patients with the Spanish flag</p><div class="note">source still TBD</div></div>
+      <div class="rule"><div class="fn">arrival_time()</div><p>Late alert: −10 min Peds, −15 min Adults/Family; new-patient earlier arrival</p><div class="note">new-patient note location TBD</div></div>
+      <div class="rule"><div class="fn">needs_no_show_notice()</div><p>9 PM notice on voicemail for NP, Adult Well, Specialty Consult</p><div class="note">voicemail only</div></div>
+      <div class="rule"><div class="fn">is_contact_allowed(at)</div><p>No contact from 12:00 PM Fri / eve → next regular morning</p><div class="note">must match the SQL logic exactly</div></div>
+      <div class="rule"><div class="fn">retry_schedule()</div><p>Voicemail, then afternoon + evening retries</p><div class="note">times in omni.setting</div></div>
+      <div class="rule"><div class="fn">parse_reply(text)</div><p>Yes / OK / confirmed … vs No / cancel / can't make it …</p><div class="note">unknown → "unclear", never guess</div></div>
+      <div class="rule"><div class="fn">reschedule_route()</div><p>Ask: cancel now, or keep while searching → transfer</p><div class="note">routing group from the query</div></div>
+      <div class="rule"><div class="fn">transfer_extension()</div><p>Primary Care x1100 · Specialty x1301 · Hillcrest x7724 · Wilson x1160</p></div>
+      <div class="rule"><div class="fn">status_code(outcome, channel)</div><p>Outcome → eCW code; same-day changes only on explicit confirm/cancel</p>
+        <div class="codes"><code>CONFPHONE</code><code>CONFSMS</code><code>CANCPHONE</code><code>CANCSMS</code><code>MSNGRVCMSG</code><code>FAILEDMSG</code><code>MANSNOACTN</code></div></div>
+      <div class="rule"><div class="fn">resolve_outcome(responses)</div><p>The first explicit answer wins; a later "no answer" on the other channel never overrides it</p></div>
+    </div>
+  </section>
+
+  <!-- 7 ============================================================ -->
+  <section id="milestones">
+    <h2><span class="num">7</span>Milestones</h2>
+    <p class="intro">Each milestone ends with something you can see working. The calendar is set less by coding than by decisions and approvals (D1–D7), so start those early.</p>
+
+    <div class="track">
+      <div class="ms ph-safe"><div class="bubble">M0</div><div class="t">Foundations</div><div class="p">S</div></div>
+      <div class="ms ph-safe"><div class="bubble">M1</div><div class="t">eCW data in</div><div class="p">M</div></div>
+      <div class="ms ph-safe"><div class="bubble">M2</div><div class="t">Rules engine</div><div class="p">M</div></div>
+      <div class="ms ph-safe"><div class="bubble">M3</div><div class="t">Dashboard v1</div><div class="p">M–L</div></div>
+      <div class="ms ph-test"><div class="bubble">M4</div><div class="t">SMS</div><div class="p">M</div></div>
+      <div class="ms ph-test"><div class="bubble">M5</div><div class="t">Voice calls</div><div class="p">L</div></div>
+      <div class="ms ph-test"><div class="bubble">M6</div><div class="t">eCW write-back</div><div class="p">M</div></div>
+      <div class="ms ph-test"><div class="bubble">M7</div><div class="t">Callback line</div><div class="p">M</div></div>
+      <div class="ms ph-test"><div class="bubble">M8</div><div class="t">Same-day</div><div class="p">S–M</div></div>
+      <div class="ms ph-live"><div class="bubble">M9</div><div class="t">Pilot &amp; live</div><div class="p">M</div></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--teal)"></i>Shadow mode: contacts nobody</span>
+      <span><i style="background:var(--violet)"></i>Allowlist mode: staff test phones only</span>
+      <span><i style="background:var(--green)"></i>Real patients</span>
+      <span>Size: <b>S</b> ≈ 1 wk · <b>M</b> ≈ 2–3 wk · <b>L</b> ≈ 4+ wk</span>
+    </div>
+
+    <details class="mcard" open>
+      <summary><span class="id bg-teal">M0</span><span class="ttl"><b>Foundations</b><div>Tools installed; empty but working project on GitHub</div></span><span class="size">S</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Install Git, uv/Python, the ODBC driver and the VS Code extensions (see GETTING_STARTED.md)</li>
+        <li>Create the private GitHub repo; push the existing <code>db/</code> and <code>docs/</code></li>
+        <li>Backend skeleton: FastAPI <code>/health</code> that checks the SQL Server connection</li>
+        <li>Frontend skeleton: a Vite + React page showing the health result</li>
+        <li>GitHub Actions CI: Ruff + pytest on every push</li></ul>
+        <div class="done"><b>Done when:</b> a teammate can clone the repo, follow the README, and see the page.</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-teal">M1</span><span class="ttl"><b>eCW data in: shadow mode</b><div>Pulls the real list daily, without contacting anyone</div></span><span class="size">M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Finish the query TODO; turn the query into a stored procedure with <code>@target_date</code></li>
+        <li>Read-only service account (D4)</li>
+        <li>Worker job: 9:00 AM on run days → save to <code>omni.run</code> + <code>omni.appointment_snapshot</code></li>
+        <li>Dashboard page <b>"Tomorrow's list"</b> with counts per site and provider</li></ul>
+        <div class="done"><b>Done when:</b> for 5 working days, the list matches the eCW Resource Schedule, as checked by front-desk staff.</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-teal">M2</span><span class="ttl"><b>Rules engine</b><div>Every rule in section 6, implemented and tested</div></span><span class="size">M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Functions + pytest tests built from the requirement tables, one test per row</li>
+        <li>English and Spanish templates, reviewed by Refuah and a Spanish speaker</li>
+        <li>Dashboard: <b>message preview</b> for each group</li></ul>
+        <div class="done"><b>Done when:</b> all tests pass, and Refuah signs off on 20 sample previews (family, Spanish, late alert, Friday run).</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-teal">M3</span><span class="ttl"><b>Manager dashboard v1</b><div>The dashboard from the requirements, on shadow data</div></span><span class="size">M–L</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Entra ID login; roles Viewer / Manager / Admin (D5)</li>
+        <li>Search by name, MRN, phone, provider, site, date</li>
+        <li>Live counts: confirmed / pending / canceled / unreached</li>
+        <li>Visit timeline (audit trail per appointment)</li>
+        <li>At-risk list: unconfirmed high-priority visits near 9:00 PM</li>
+        <li>CSV/Excel export, logged in the audit trail</li></ul>
+        <div class="done"><b>Done when:</b> managers can use it on shadow data and give feedback.</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-violet">M4</span><span class="ttl"><b>SMS channel</b><div>Two-way texts, to staff test phones only</div></span><span class="size">M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Provider account under a signed BAA (D1, D3)</li>
+        <li>Send texts; receive replies + delivery receipts by webhook; parse replies</li>
+        <li><b>Allowlist mode:</b> only numbers on a test list can be contacted until an Admin switches it off. The check sits in the sending code, so nothing can bypass it</li>
+        <li>Opt-out handling (STOP)</li></ul>
+        <div class="done"><b>Done when:</b> test phones receive correct texts, and replies show up correctly on the dashboard.</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-violet">M5</span><span class="ttl"><b>Voice calls</b><div>Outbound calls, voicemail, keypad/speech, retries, transfers</div></span><span class="size">L</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Text-to-speech in English and Spanish; voicemail detection; no-show notice on voicemail</li>
+        <li>Keypad 1 = confirm, 2 = cancel, 3 = reschedule; simple speech recognition</li>
+        <li>Afternoon + evening retries; Shabbat/holiday check before every attempt</li>
+        <li>Transfers to x1100 / x1301 / x7724 / x1160, with a wait-time estimate</li></ul>
+        <div class="done"><b>Done when:</b> a scripted test day of about 30 scenarios passes on test phones.</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-violet">M6</span><span class="ttl"><b>eCW status write-back</b><div>Outcomes update eCW automatically (depends on D2)</div></span><span class="size">M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Use the interface chosen in D2. Never write directly into eCW tables</li>
+        <li>Read the status back to confirm it took; show failures on the dashboard for staff</li></ul>
+        <div class="done"><b>Done when:</b> in the eCW test environment, every code (CONFPHONE … MANSNOACTN) updates correctly.</div></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-violet">M7</span><span class="ttl"><b>Inbound callback line</b><div>Patients who call back can confirm or cancel</div></span><span class="size">M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Main-menu option on the PBX → OmniConnect line</li>
+        <li>Identity check (method TBD, for example DOB + appointment date)</li>
+        <li>Confirm/cancel → CONFPHONE / CANCPHONE</li></ul></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-violet">M8</span><span class="ttl"><b>Same-day reminder</b><div>Courtesy reminder 1.5 hours before, all statuses</div></span><span class="size">S–M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Same query, all statuses, today's date; quiet-hours rule for early appointments</li>
+        <li>Status changes only on an explicit confirm or cancel</li></ul></div>
+    </details>
+    <details class="mcard">
+      <summary><span class="id bg-green">M9</span><span class="ttl"><b>Pilot &amp; go-live</b><div>Safely switch on for real patients</div></span><span class="size">M</span><span class="chev">▶</span></summary>
+      <div class="mbody"><ul>
+        <li>Windows services on the server; HTTPS; backups; email alerts when a job fails</li>
+        <li>Runbook: "9:00 AM job failed", "pause all contact"</li>
+        <li><b>Pilot:</b> one site + one department for 2 weeks</li>
+        <li>Compare confirmation and no-show rates; fix; roll out site by site</li></ul>
+        <div class="done"><b>Done when:</b> all four sites are live, and managers use the dashboard daily.</div></div>
+    </details>
+  </section>
+
+  <!-- 8 ============================================================ -->
+  <section id="decisions">
+    <h2><span class="num">8</span>Decisions needed</h2>
+    <p class="intro">Start these early; other people control their timing. Write each answer as a short note in <code>docs/decisions/</code>.</p>
+    <table>
+      <tr><th style="width:6%">#</th><th>Decision</th><th style="width:17%">Needed by</th><th style="width:15%">Who</th></tr>
+      <tr><td><span class="tag decide">D1</span></td><td><b>Call/SMS platform:</b> PBX API, Azure Communication Services or Twilio. It must transfer into the PBX queues, detect voicemail, and sign a BAA. First, find out which PBX Refuah uses.</td><td>Start of M4</td><td>IT + telecom</td></tr>
+      <tr><td><span class="tag decide">D2</span></td><td><b>Status write-back to eCW:</b> API, HL7 SIU, or another eCW-supported method. The codes (MSNGRVCMSG …) look like eCW Messenger's, so eCW may already have an interface for them.</td><td>Start of M6 <b>(ask now)</b></td><td>IT + eCW</td></tr>
+      <tr><td><span class="tag decide">D3</span></td><td><b>BAAs</b> signed with the call/SMS provider (and any AI provider later).</td><td>Before real data</td><td>Compliance</td></tr>
+      <tr><td><span class="tag decide">D4</span></td><td><b>Service accounts:</b> read-only on eCW; read/write on the <code>omni</code> schema.</td><td>Start of M1</td><td>DBA</td></tr>
+      <tr><td><span class="tag decide">D5</span></td><td><b>Entra ID app registration</b> and AD groups for the dashboard roles.</td><td>Start of M3</td><td>IT</td></tr>
+      <tr><td><span class="tag decide">D6</span></td><td><b>Is GitHub approved?</b> Create a Refuah GitHub organization; the alternative is Azure DevOps.</td><td>Start of M0</td><td>IT</td></tr>
+      <tr><td><span class="tag decide">D7</span></td><td><b>Hosting:</b> which server, and who patches and backs it up?</td><td>Before M9 (ideally M1)</td><td>IT</td></tr>
+    </table>
+  </section>
+
+  <!-- 9 ============================================================ -->
+  <section id="security">
+    <h2><span class="num">9</span>Security &amp; HIPAA rules for development</h2>
+    <p class="intro">These apply from day one, including while you're learning.</p>
+    <div class="rulelist">
+      <div class="rl"><b>No PHI in Git, ever</b><p>No real names, phones, MRNs, results, screenshots or exports. If PHI is committed by mistake, tell IT/compliance right away; deleting it in a new commit is not enough.</p></div>
+      <div class="rl"><b>Secrets live in .env only</b><p>Never committed. <code>.env.example</code> shows the names with fake values.</p></div>
+      <div class="rl"><b>Test with fake data</b><p>"Test Patient", 555-0100 numbers. Real data only in shadow mode on the server.</p></div>
+      <div class="rl"><b>Least privilege</b><p>Read-only access to eCW; each dashboard role sees only what it needs.</p></div>
+      <div class="rl"><b>Logs have no PHI</b><p>Log appointment IDs, not names or phone numbers.</p></div>
+      <div class="rl"><b>Audit everything</b><p>Every contact, response, status change, staff timeline view and export.</p></div>
+      <div class="rl"><b>Protected main branch</b><p>Private repo; changes only through pull requests; secret scanning on.</p></div>
+    </div>
+  </section>
+
+  <!-- 10 ============================================================ -->
+  <section id="testing">
+    <h2><span class="num">10</span>Testing strategy</h2>
+    <table>
+      <tr><th>Level</th><th>What</th><th>Tool</th><th>When</th></tr>
+      <tr><td><b>Unit</b></td><td>Every rules-engine function, using cases from the requirement tables</td><td>pytest</td><td class="tight">Every push</td></tr>
+      <tr><td><b>Query</b></td><td>Shadow runs compared with the eCW schedule</td><td>SSMS + dashboard</td><td class="tight">M1, then weekly</td></tr>
+      <tr><td><b>API</b></td><td>Endpoints and webhooks with fake payloads</td><td>pytest + test client</td><td class="tight">Every push</td></tr>
+      <tr><td><b>Frontend</b></td><td>Key screens render and filter correctly</td><td>Vitest + Testing Library</td><td class="tight">From M3</td></tr>
+      <tr><td><b>Scenario</b></td><td>Scripted test day: family, Spanish, voicemail, retries, Friday, transfer, callback</td><td>Manual checklist</td><td class="tight">M4–M8</td></tr>
+      <tr><td><b>Pilot</b></td><td>Real patients, one site/department</td><td>Dashboard metrics</td><td class="tight">M9</td></tr>
+    </table>
+  </section>
+
+  <!-- 11 ============================================================ -->
+  <section id="risks">
+    <h2><span class="num">11</span>Risks</h2>
+    <table>
+      <tr><th style="width:30%">Risk</th><th style="width:22%">Impact</th><th>Mitigation</th></tr>
+      <tr><td><span class="lvl h"></span>eCW write-back unavailable or slow to approve</td><td>Statuses updated by hand</td><td>Ask eCW now (D2); meanwhile, the dashboard gives staff a "to update" list</td></tr>
+      <tr><td><span class="lvl h"></span>PBX can't accept transfers from the provider</td><td>Reschedule flow breaks</td><td>Decide D1 with telecom early; test a transfer at the start of M5</td></tr>
+      <tr><td><span class="lvl h"></span>Wrong patient contacted (bad phone, stale status)</td><td>Patient trust, HIPAA</td><td>Status re-check before each contact; allowlist mode; pilot first</td></tr>
+      <tr><td><span class="lvl h"></span>No-contact rule differs between SQL and Python</td><td>Calls on Shabbat</td><td>Shared test cases; one calendar table</td></tr>
+      <tr><td><span class="lvl m"></span>Linked-server query is slow</td><td>9:00 AM job runs late</td><td><code>OPENQUERY</code> / stored procedure; time it in M1</td></tr>
+      <tr><td><span class="lvl m"></span>Learning curve (Git/React new)</td><td>Slower start</td><td>Small, safe M0–M1; GETTING_STARTED.md; Claude explains and reviews</td></tr>
+      <tr><td><span class="lvl m"></span>One developer</td><td>Single point of knowledge</td><td>Docs, decision notes, tests, an up-to-date README</td></tr>
+    </table>
+  </section>
+
+  <footer>OmniConnect · Refuah Health Center · Development Plan v1.0 draft · 2026-11-10<br>Source: docs/DEVELOPMENT_PLAN.md</footer>
+  </div>
+</main>
+</div>
+</body>
+</html>

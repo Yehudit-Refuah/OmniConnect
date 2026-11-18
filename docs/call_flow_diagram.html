@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OmniConnect: Confirmation Call Flow</title>
+<style>
+  :root {
+    --pbx: #2563eb;      --pbx-bg: #eff6ff;
+    --api: #7c3aed;      --api-bg: #f5f3ff;
+    --pat: #475569;      --pat-bg: #f1f5f9;
+    --dec: #ea580c;      --dec-bg: #fff7ed;
+    --ink: #0f172a;      --muted: #64748b;   --line: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 24px 48px;
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink); background: #f8fafc;
+  }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header h1 { margin: 0 0 4px; font-size: 26px; }
+  header p  { margin: 0; color: var(--muted); }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 20px 0 16px; font-size: 13px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 14px; height: 14px; border-radius: 4px; border: 2px solid; display: inline-block; }
+  .card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 16px;
+    padding: 20px; box-shadow: 0 1px 3px rgba(15, 23, 42, .06);
+  }
+  .card h2 { margin: 0 0 14px; font-size: 17px; }
+  svg { width: 100%; height: auto; display: block; }
+  .timeline { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 24px; }
+  .step { border-radius: 12px; padding: 14px; border: 2px solid; }
+  .step b { display: block; font-size: 15px; margin-bottom: 4px; }
+  .step small { color: var(--muted); font-size: 12.5px; line-height: 1.4; display: block; }
+  .t-api { border-color: var(--api); background: var(--api-bg); }
+  .t-pbx { border-color: var(--pbx); background: var(--pbx-bg); }
+  .t-block { border-color: #dc2626; background: #fef2f2; }
+  footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; }
+  @media (max-width: 900px) { .timeline { grid-template-columns: 1fr 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>OmniConnect: Appointment Confirmation Call Flow</h1>
+  <p>Day-prior confirmation call · Refuah PBX ↔ OmniConnect API (<code>/api/pbx/v1/calls</code>) · draft for review</p>
+</header>
+
+<div class="legend">
+  <span><i class="sw" style="border-color:var(--pbx);background:var(--pbx-bg)"></i>PBX does it</span>
+  <span><i class="sw" style="border-color:var(--api);background:var(--api-bg)"></i>OmniConnect API decides</span>
+  <span><i class="sw" style="border-color:var(--pat);background:var(--pat-bg)"></i>Patient</span>
+  <span><i class="sw" style="border-color:var(--dec);background:var(--dec-bg);transform:rotate(45deg) scale(.8)"></i>Decision</span>
+  <span><i class="sw" style="border-color:#16a34a;background:#dcfce7;border-radius:9px"></i>Written to the visit in eCW</span>
+  <span><i class="sw" style="border-color:#94a3b8;background:#f8fafc;border-radius:9px;border-style:dashed"></i>Recorded in OmniConnect only (not written to eCW until approved)</span>
+</div>
+
+<div class="card">
+  <h2>One call, step by step</h2>
+  <svg viewBox="0 0 1200 1390" role="img" aria-label="Confirmation call flow diagram">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+      </marker>
+      <filter id="sh" x="-5%" y="-5%" width="110%" height="120%">
+        <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0f172a" flood-opacity=".08"/>
+      </filter>
+      <style>
+        .box  { stroke-width: 2; filter: url(#sh); }
+        .pbx  { fill: #eff6ff; stroke: #2563eb; }
+        .api  { fill: #f5f3ff; stroke: #7c3aed; }
+        .pat  { fill: #f1f5f9; stroke: #475569; }
+        .dec  { fill: #fff7ed; stroke: #ea580c; stroke-width: 2; filter: url(#sh); }
+        .ln   { stroke: #94a3b8; stroke-width: 2; fill: none; }
+        .ar   { stroke: #94a3b8; stroke-width: 2; fill: none; marker-end: url(#arr); }
+        text  { font-family: "Segoe UI", system-ui, sans-serif; fill: #0f172a; }
+        .tag  { font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+        .tag-pbx { fill: #2563eb; } .tag-api { fill: #7c3aed; } .tag-pat { fill: #475569; }
+        .ttl  { font-size: 15px; font-weight: 700; }
+        .sub  { font-size: 12.5px; fill: #475569; }
+        .quote{ font-size: 12.5px; fill: #334155; font-style: italic; }
+        .act  { font-size: 12.5px; font-weight: 700; fill: #7c3aed; }
+        .lbl  { font-size: 12px; font-weight: 600; fill: #64748b;
+                paint-order: stroke; stroke: #ffffff; stroke-width: 5px; }
+        .pill-t { font-size: 11.5px; font-weight: 700; }
+        .pill-off   { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.5; stroke-dasharray: 4 3; }
+        .pill-off-t { fill: #64748b; }
+      </style>
+    </defs>
+
+    <!-- 1. GET /calls -->
+    <rect class="box pbx" x="420" y="16" width="360" height="84" rx="12"/>
+    <text x="600" y="38" text-anchor="middle" class="tag tag-pbx">PBX</text>
+    <text x="600" y="60" text-anchor="middle" class="ttl">GET /calls · calls due now</text>
+    <text x="600" y="82" text-anchor="middle" class="sub">at 9:00 AM · 2:00 PM · 6:00 PM (retries)</text>
+    <line class="ar" x1="600" y1="100" x2="600" y2="124"/>
+
+    <!-- 2. POST dialing -->
+    <rect class="box api" x="420" y="126" width="360" height="84" rx="12"/>
+    <text x="600" y="148" text-anchor="middle" class="tag tag-api">PBX → API</text>
+    <text x="600" y="170" text-anchor="middle" class="ttl">POST dialing</text>
+    <text x="600" y="192" text-anchor="middle" class="sub">API re-checks: still PENDING? time allowed?</text>
+    <line class="ar" x1="600" y1="210" x2="600" y2="236"/>
+
+    <!-- Decision: dial? -->
+    <polygon class="dec" points="600,238 680,280 600,322 520,280"/>
+    <text x="600" y="285" text-anchor="middle" class="ttl">Dial?</text>
+
+    <!-- skip branch -->
+    <line class="ar" x1="680" y1="280" x2="798" y2="280"/>
+    <text x="740" y="272" text-anchor="middle" class="lbl">skip</text>
+    <rect class="box api" x="800" y="238" width="330" height="84" rx="12"/>
+    <text x="965" y="260" text-anchor="middle" class="tag tag-api">API → PBX</text>
+    <text x="965" y="282" text-anchor="middle" class="ttl">Skip: don't dial</text>
+    <text x="965" y="304" text-anchor="middle" class="sub">cancelled · already confirmed · Shabbat/holiday</text>
+    <rect x="850" y="332" width="230" height="26" rx="13" fill="#f1f5f9" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="965" y="349" text-anchor="middle" class="pill-t" fill="#475569">→ POST ended · no change</text>
+
+    <!-- dial -->
+    <line class="ar" x1="600" y1="322" x2="600" y2="350"/>
+    <text x="612" y="340" class="lbl">dial</text>
+
+    <!-- 3. PBX dials -->
+    <rect class="box pbx" x="420" y="352" width="360" height="60" rx="12"/>
+    <text x="600" y="374" text-anchor="middle" class="tag tag-pbx">PBX</text>
+    <text x="600" y="396" text-anchor="middle" class="ttl">Dials the patient</text>
+    <line class="ar" x1="600" y1="412" x2="600" y2="436"/>
+
+    <!-- Decision: who answers -->
+    <polygon class="dec" points="600,438 720,484 600,530 480,484"/>
+    <text x="600" y="489" text-anchor="middle" class="ttl">Who answers?</text>
+
+    <!-- no answer branch -->
+    <line class="ar" x1="480" y1="484" x2="352" y2="484"/>
+    <text x="416" y="476" text-anchor="middle" class="lbl">no one</text>
+    <rect class="box pbx" x="40" y="442" width="310" height="84" rx="12"/>
+    <text x="195" y="464" text-anchor="middle" class="tag tag-pbx">PBX</text>
+    <text x="195" y="486" text-anchor="middle" class="ttl">No answer · busy · failed</text>
+    <text x="195" y="508" text-anchor="middle" class="sub">POST ended → offered again at the next GET</text>
+    <rect class="pill-off" x="85" y="536" width="220" height="26" rx="13"/>
+    <text x="195" y="553" text-anchor="middle" class="pill-t pill-off-t">FAILEDMSG after the last try</text>
+
+    <!-- voicemail branch -->
+    <line class="ar" x1="720" y1="484" x2="848" y2="484"/>
+    <text x="784" y="476" text-anchor="middle" class="lbl">machine</text>
+    <rect class="box api" x="850" y="442" width="310" height="84" rx="12"/>
+    <text x="1005" y="464" text-anchor="middle" class="tag tag-api">API → PBX</text>
+    <text x="1005" y="486" text-anchor="middle" class="ttl">Voicemail</text>
+    <text x="1005" y="508" text-anchor="middle" class="sub">voicemail text (+ no-show notice) → hang up</text>
+    <rect class="pill-off" x="915" y="536" width="180" height="26" rx="13"/>
+    <text x="1005" y="553" text-anchor="middle" class="pill-t pill-off-t">MSNGRVCMSG</text>
+
+    <!-- person -->
+    <line class="ar" x1="600" y1="530" x2="600" y2="566"/>
+    <text x="612" y="552" class="lbl">person</text>
+
+    <!-- 4. Opening message -->
+    <rect class="box api" x="360" y="568" width="480" height="100" rx="12"/>
+    <text x="600" y="590" text-anchor="middle" class="tag tag-api">API → PBX</text>
+    <text x="600" y="612" text-anchor="middle" class="ttl">Opening message</text>
+    <text x="600" y="634" text-anchor="middle" class="quote">“…your appointment with Dr. Example on Monday at 9:30 AM…”</text>
+    <text x="600" y="654" text-anchor="middle" class="quote">“Can you make it? Say confirm, cancel or reschedule.” → listen</text>
+    <line class="ar" x1="600" y1="668" x2="600" y2="692"/>
+
+    <!-- 5. Patient speaks -->
+    <rect class="box pat" x="360" y="694" width="480" height="80" rx="12"/>
+    <text x="600" y="716" text-anchor="middle" class="tag tag-pat">PATIENT → PBX → API</text>
+    <text x="600" y="738" text-anchor="middle" class="ttl">Answers in their own words</text>
+    <text x="600" y="760" text-anchor="middle" class="sub">PBX turns speech into text → POST reply</text>
+    <line class="ar" x1="600" y1="774" x2="600" y2="798"/>
+
+    <!-- Decision: understand -->
+    <polygon class="dec" points="600,800 770,850 600,900 430,850"/>
+    <text x="600" y="846" text-anchor="middle" class="ttl">API understands the reply</text>
+    <text x="600" y="866" text-anchor="middle" class="sub">word lists first, then Claude</text>
+
+    <!-- bus to 5 branches -->
+    <line class="ln" x1="600" y1="900" x2="600" y2="920"/>
+    <line class="ln" x1="120" y1="920" x2="1080" y2="920"/>
+    <line class="ar" x1="120"  y1="920" x2="120"  y2="956"/>
+    <line class="ar" x1="360"  y1="920" x2="360"  y2="956"/>
+    <line class="ar" x1="600"  y1="920" x2="600"  y2="956"/>
+    <line class="ar" x1="840"  y1="920" x2="840"  y2="956"/>
+    <line class="ar" x1="1080" y1="920" x2="1080" y2="956"/>
+
+    <!-- Branch: Confirm -->
+    <rect class="box api" x="10" y="958" width="220" height="130" rx="12"/>
+    <text x="120" y="982" text-anchor="middle" class="ttl" fill="#15803d">Confirm</text>
+    <text x="120" y="1004" text-anchor="middle" class="quote">“Thank you, your</text>
+    <text x="120" y="1020" text-anchor="middle" class="quote">appointment is</text>
+    <text x="120" y="1036" text-anchor="middle" class="quote">confirmed.”</text>
+    <text x="120" y="1068" text-anchor="middle" class="act">→ hang up</text>
+
+    <!-- Branch: Cancel -->
+    <rect class="box api" x="250" y="958" width="220" height="130" rx="12"/>
+    <text x="360" y="982" text-anchor="middle" class="ttl" fill="#b45309">Cancel</text>
+    <text x="360" y="1004" text-anchor="middle" class="quote">“You'd like to cancel</text>
+    <text x="360" y="1020" text-anchor="middle" class="quote">Monday at 9:30,</text>
+    <text x="360" y="1036" text-anchor="middle" class="quote">is that right?”</text>
+    <text x="360" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
+
+    <!-- Branch: Reschedule -->
+    <rect class="box api" x="490" y="958" width="220" height="130" rx="12"/>
+    <text x="600" y="982" text-anchor="middle" class="ttl" fill="#b45309">Reschedule</text>
+    <text x="600" y="1004" text-anchor="middle" class="quote">“Cancel it now, or keep</text>
+    <text x="600" y="1020" text-anchor="middle" class="quote">it while you look for</text>
+    <text x="600" y="1036" text-anchor="middle" class="quote">another time?”</text>
+    <text x="600" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
+
+    <!-- Branch: Unclear -->
+    <rect class="box api" x="730" y="958" width="220" height="130" rx="12"/>
+    <text x="840" y="982" text-anchor="middle" class="ttl" fill="#b45309">Unclear / other</text>
+    <text x="840" y="1004" text-anchor="middle" class="quote">“Let me transfer you</text>
+    <text x="840" y="1020" text-anchor="middle" class="quote">to a staff member</text>
+    <text x="840" y="1036" text-anchor="middle" class="quote">who can help.”</text>
+    <text x="840" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
+
+    <!-- Branch: Silence -->
+    <rect class="box api" x="970" y="958" width="220" height="130" rx="12"/>
+    <text x="1080" y="982" text-anchor="middle" class="ttl" fill="#b45309">Silence</text>
+    <text x="1080" y="1004" text-anchor="middle" class="sub">Ask the question</text>
+    <text x="1080" y="1020" text-anchor="middle" class="sub">once more.</text>
+    <text x="1080" y="1036" text-anchor="middle" class="sub">Still silent:</text>
+    <text x="1080" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
+
+    <!-- status pills -->
+    <rect x="20" y="1098" width="200" height="26" rx="13" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="120" y="1115" text-anchor="middle" class="pill-t" fill="#15803d">CONFPHONE → eCW</text>
+    <rect class="pill-off" x="255" y="1098" width="210" height="26" rx="13"/>
+    <text x="360" y="1115" text-anchor="middle" class="pill-t pill-off-t">MANSNOACTN · visit unchanged</text>
+    <rect class="pill-off" x="510" y="1098" width="180" height="26" rx="13"/>
+    <text x="600" y="1115" text-anchor="middle" class="pill-t pill-off-t">MANSNOACTN</text>
+    <rect class="pill-off" x="750" y="1098" width="180" height="26" rx="13"/>
+    <text x="840" y="1115" text-anchor="middle" class="pill-t pill-off-t">MANSNOACTN</text>
+    <rect class="pill-off" x="990" y="1098" width="180" height="26" rx="13"/>
+    <text x="1080" y="1115" text-anchor="middle" class="pill-t pill-off-t">MANSNOACTN</text>
+
+    <!-- bus to ended -->
+    <line class="ln" x1="120"  y1="1124" x2="120"  y2="1160"/>
+    <line class="ln" x1="360"  y1="1124" x2="360"  y2="1160"/>
+    <line class="ln" x1="600"  y1="1124" x2="600"  y2="1160"/>
+    <line class="ln" x1="840"  y1="1124" x2="840"  y2="1160"/>
+    <line class="ln" x1="1080" y1="1124" x2="1080" y2="1160"/>
+    <line class="ln" x1="120" y1="1160" x2="1080" y2="1160"/>
+    <line class="ar" x1="600" y1="1160" x2="600" y2="1186"/>
+
+    <!-- ended -->
+    <rect class="box api" x="360" y="1188" width="480" height="84" rx="12"/>
+    <text x="600" y="1210" text-anchor="middle" class="tag tag-api">PBX → API</text>
+    <text x="600" y="1232" text-anchor="middle" class="ttl">POST ended · outcome, times, transfer details</text>
+    <text x="600" y="1254" text-anchor="middle" class="sub">Audit log + retries · CONFPHONE to eCW only if still PENDING</text>
+
+    <!-- fallback -->
+    <rect x="40" y="1300" width="1120" height="70" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
+    <text x="600" y="1328" text-anchor="middle" class="ttl" fill="#b91c1c">Safety fallback</text>
+    <text x="600" y="1351" text-anchor="middle" class="sub" style="font-size:12.5px">If the API fails or takes more than 4 seconds during a live call, the PBX says “Please hold while I transfer you…” and transfers to the call's operator extension.</text>
+  </svg>
+</div>
+
+<div class="card" style="margin-top:24px">
+  <h2>The day, at a glance</h2>
+  <div class="timeline" style="margin-top:0">
+    <div class="step t-api"><b>8:30 AM</b><small>OmniConnect runs the eCW query and prepares tomorrow's call list (families grouped, arrival times, language).</small></div>
+    <div class="step t-pbx"><b>9:00 AM</b><small>PBX sends the first GET and starts calling. Each call follows the flow above.</small></div>
+    <div class="step t-pbx"><b>2:00 PM</b><small>GET again: only calls with no answer or busy are offered for a retry.</small></div>
+    <div class="step t-pbx"><b>6:00 PM</b><small>Last retry. Unreached calls are marked FAILEDMSG in OmniConnect (not in eCW yet).</small></div>
+    <div class="step t-block"><b>Fri / holiday eve</b><small>No calls after 12:00 PM. On Shabbat and holidays the GET returns no calls.</small></div>
+  </div>
+</div>
+
+<footer>
+  Source: docs/PBX_INTEGRATION_API.md (draft 0.2) and docs/DEVELOPMENT_PLAN.md · Times 2:00 PM and 6:00 PM are examples until agreed with the PBX team · Wording is illustrative; the real text comes from the API.
+</footer>
+
+</div>
+</body>
+</html>
