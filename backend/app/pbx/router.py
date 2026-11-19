@@ -1,11 +1,14 @@
 from datetime import datetime
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+
+from app.security import require_pbx
+
 
 from app.pbx.models import (Appointment, Call, CallAnswer, CallBatch,
                             CallEvent, ListenSettings, Patient)
 
-router = APIRouter(prefix="/api/pbx/v1")
+router = APIRouter(prefix="/api/pbx/v1", dependencies=[Depends(require_pbx)])
 
 FAKE_CALLS = [
     Call(

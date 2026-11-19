@@ -4,8 +4,8 @@
 
 Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS Code terminal (**Terminal → New Terminal**), with the `OmniConnect` folder open (**File → Open Folder**).
 
-> ### 📍 You are here: **commit B2 + B3**, then start **B4**
-> B1 is finished and pushed. B2 (GET /calls) and B3 (POST /calls) are built and tested, but not committed yet.
+> ### 📍 You are here: **B4.2** (main.py reads .env), then B4.3–B4.6
+> B1, B2 and B3 are finished and pushed. B4.1 (.env + .env.example) is done; .env.example and this file still need committing.
 
 ---
 
@@ -357,7 +357,7 @@ git push
 
 **Commit:** `git commit -m "Add GET /calls with fake data"`
 
-### B3. POST /calls (receive what happened) ← 📍 you are here
+### B3. POST /calls (receive what happened)
 - [x] Built and tested
 - [ ] Committed and pushed
 
@@ -497,23 +497,156 @@ git push
 
 **Commit:** `git commit -m "Add POST /calls with basic event answers"`
 
-### B4. Security: API key + IP allowlist
+### B4. Security: API key + IP allowlist ← 📍 you are here
 - [ ] Done
 
 **What you get:** only the PBX can use the API.
 
-**How:**
-1. Create `backend/.env`. It's already covered by `.gitignore`, so it will never be committed:
-   ```ini
-   PBX_API_KEY=make-up-a-long-random-test-key
-   PBX_ALLOWED_IPS=127.0.0.1
+**How it works:** every request to `/api/pbx/v1/...` passes two checks before it reaches the endpoint:
+
+| Check | Fails if | Answer |
+|---|---|---|
+| 1. **API key:** the `X-API-Key` header must match `PBX_API_KEY` in `.env` | the key is missing or wrong | `401 Unauthorized` ("who are you?") |
+| 2. **IP address:** the caller must be on the `PBX_ALLOWED_IPS` list | the request comes from another computer | `403 Forbidden` ("you're not allowed") |
+
+`/api/health` stays open, so monitoring can check it without a key. It contains no data.
+
+In FastAPI, a **dependency** is a function that runs before an endpoint. Attaching it to the **router** means it runs for **every** endpoint in that router, so you can't forget it on a new one.
+
+#### B4.1 Create `.env` and `.env.example`
+- [x] Done (named correctly, with placeholders in `.env.example`)
+
+⚠️ **The file names must be exactly `.env` and `.env.example`, with no `.txt` at the end.** Windows sometimes adds `.txt` without showing it. `.gitignore` doesn't protect `.env.txt`, so it would be uploaded.
+
+**Check the names:** in VS Code's file list, they should appear as `.env` and `.env.example`. If you see `.txt`, right-click → **Rename** and remove it.
+
+1. **Make a strong key.** In the terminal, from the `backend` folder:
+   ```powershell
+   uv run python -c "import secrets; print(secrets.token_urlsafe(32))"
    ```
-2. Create `backend/.env.example` with the same names and fake values. This one **is** committed, so others know which settings exist.
-3. Add a FastAPI dependency that checks the `X-API-Key` header and the caller's IP address, and returns `401` / `403` if they don't match. Attach it to the PBX router.
+   Copy the long random text it prints.
+2. **`backend/.env`** (secret, never committed). Paste in your key:
+   ```ini
+   PBX_API_KEY=<paste the long random key here>
+   PBX_ALLOWED_IPS=127.0.0.1,::1
+   ```
+   `127.0.0.1` and `::1` both mean "this PC", so you can test from your own browser. Later, the PBX server's IP address is added here.
+3. **`backend/.env.example`** (committed, so others know which settings exist). Same names, **placeholder values only**:
+   ```ini
+   PBX_API_KEY=put-a-long-random-key-here
+   PBX_ALLOWED_IPS=127.0.0.1,::1
+   ```
 
-**Check it worked:** in `/docs`, a call without the key gets `401`; click **Authorize**, enter the key, and it works.
+#### B4.2 Make the app read `.env`
+- [ ] Done
 
-**Commit:** `git commit -m "Protect PBX endpoints with API key and IP allowlist"` (check that `.env` is **not** in `git status`).
+Replace all of `backend/app/main.py` with:
+```python
+from dotenv import load_dotenv
+
+load_dotenv()  # read backend/.env before anything else
+
+from fastapi import FastAPI  # noqa: E402
+
+from app.pbx.router import router as pbx_router  # noqa: E402
+
+app = FastAPI(title="OmniConnect API")
+app.include_router(pbx_router)
+
+
+@app.get("/api/health")
+def health():
+    """Simple check that the API is running."""
+    return {"status": "ok"}
+```
+`load_dotenv()` must come first, so the settings are loaded before the rest of the app starts. `# noqa: E402` tells the code checker (Ruff) that the imports below it are placed there on purpose.
+
+#### B4.3 Create the security check
+- [ ] Done
+
+Create `backend/app/security.py`:
+```python
+"""Security checks for the PBX endpoints."""
+
+import os
+import secrets
+
+from fastapi import HTTPException, Request, Security
+from fastapi.security import APIKeyHeader
+
+# Tells FastAPI to read the "X-API-Key" header.
+# It also adds the "Authorize" button to the /docs page.
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def allowed_ips() -> set[str]:
+    """Read PBX_ALLOWED_IPS from .env, e.g. "127.0.0.1,::1"."""
+    value = os.getenv("PBX_ALLOWED_IPS", "")
+    return {ip.strip() for ip in value.split(",") if ip.strip()}
+
+
+def require_pbx(request: Request, api_key: str | None = Security(api_key_header)) -> None:
+    """Runs before every PBX endpoint. Stops the request if it isn't from the PBX."""
+    # 1. The API key must match. compare_digest compares safely (no timing hints).
+    expected = os.getenv("PBX_API_KEY", "")
+    if not expected or not api_key or not secrets.compare_digest(api_key, expected):
+        raise HTTPException(status_code=401, detail="Missing or wrong API key")
+
+    # 2. The caller's IP address must be on the allowed list.
+    client_ip = request.client.host if request.client else ""
+    if client_ip not in allowed_ips():
+        raise HTTPException(status_code=403, detail="This address is not allowed")
+```
+**Safe by default:** if `PBX_API_KEY` is missing from `.env`, **every** request is refused. A forgotten setting locks the door instead of leaving it open.
+
+#### B4.4 Attach it to the PBX router
+- [ ] Done
+
+In `backend/app/pbx/router.py`, change three lines:
+1. Add `Depends` to the FastAPI import:
+   ```python
+   from fastapi import APIRouter, Depends, HTTPException
+   ```
+2. Add this import under it:
+   ```python
+   from app.security import require_pbx
+   ```
+3. Change the `router = ...` line to:
+   ```python
+   router = APIRouter(prefix="/api/pbx/v1", dependencies=[Depends(require_pbx)])
+   ```
+
+#### B4.5 Test it
+- [ ] Done
+
+**Restart the server.** Press **Ctrl+C**, then run `uv run fastapi dev app/main.py` again. The server reloads by itself when `.py` files change, but **not** when `.env` changes.
+
+In http://localhost:8000/docs:
+1. **No key:** try **GET /api/pbx/v1/calls** and you should get `401` "Missing or wrong API key".
+2. **With the key:** click the **Authorize 🔒** button at the top right, paste your key from `.env`, then click **Authorize** and **Close**. Try again and you should get `200` with the call list.
+3. **Health is still open:** **GET /api/health** works without a key.
+4. **IP check:** in `.env`, change `PBX_ALLOWED_IPS=10.0.0.5` (not your PC), restart, and try with the key. You should get `403`. Then **change it back** and restart.
+
+#### B4.6 Commit
+- [ ] Done
+
+```powershell
+cd C:\Users\ygarbuz\Projects\OmniConnect
+git add .
+git status
+```
+**Check carefully:** `backend/.env.example` and `backend/app/security.py` should be in the list. **`backend/.env` must NOT be in it.** If it is, stop and run `git reset`.
+
+```powershell
+git commit -m "Protect PBX endpoints with API key and IP allowlist"
+git push
+```
+
+**Later, on the real server:**
+- Use a **different** key from your test key.
+- Send it to the PBX team securely, **never by email**.
+- Set `PBX_ALLOWED_IPS` to the PBX server's address.
+- If the API ends up behind a proxy or load balancer, the IP check must read the real caller's address. Ask Claude when you get there.
 
 ### B5. Conversation logic
 
@@ -557,12 +690,7 @@ git push
    CLAUDE_INTENT_MODEL=claude-opus-5-5
    ```
 3. Add the same three lines to `backend/.env.example` (never with a real key).
-4. Make the app read `.env` when it starts. At the very top of `backend/app/main.py`, before the other imports, add:
-   ```python
-   from dotenv import load_dotenv
-
-   load_dotenv()
-   ```
+4. Restart the server so it reads the new settings. The app already reads `.env` (set up in B4.2).
 
 ⚠️ **Why it's off:** sending what a patient said to Claude means sending patient information to an outside service. That's allowed only once the BAA (patient-data agreement) with Anthropic is confirmed by IT/compliance. While it's `false`, everything works with word lists, and unclear answers go to an operator.
 
