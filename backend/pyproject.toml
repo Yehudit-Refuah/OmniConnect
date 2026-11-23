@@ -8,6 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
+    "anthropic>=2.10.0",
     "apscheduler>=3.11.3",
     "fastapi[standard]>=0.163.2",
     "pyodbc>=5.5.0",

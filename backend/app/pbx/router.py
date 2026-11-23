@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.security import require_pbx
 
+from app.conversation import flow
 
 from app.pbx.models import (Appointment, Call, CallAnswer, CallBatch,
                             CallEvent, ListenSettings, Patient)
@@ -79,10 +80,7 @@ def answer_event(event: CallEvent, call: Call) -> CallAnswer:
     if event.event == "dialing":
         return CallAnswer(action="dial")
     if event.event == "answered":
-        return CallAnswer(
-            say="Hello, this is Refuah Health calling to confirm an appointment.",
-            language=call.language, action="listen", listen=ListenSettings(),
-        )
+           return flow.start(call)
     if event.event == "voicemail":
         # No names or visit details on voicemail: someone else may hear it.
         return CallAnswer(
@@ -90,11 +88,9 @@ def answer_event(event: CallEvent, call: Call) -> CallAnswer:
                 "Please call us back. Thank you.",
             language=call.language, action="hangup",
         )
-    if event.event in ("reply", "no_input"):
-        return CallAnswer(
-            say="Please hold while I transfer you to a staff member.",
-            language=call.language, action="transfer",
-            transfer_to=call.operator_extension,
-        )
+    if event.event == "reply":
+           return flow.on_reply(call, event.transcript or "")
+    if event.event == "no_input":
+           return flow.on_no_input(call)
     return CallAnswer(action="none")  # hangup_by_patient, ended
 

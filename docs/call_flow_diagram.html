@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -39,6 +39,22 @@
   .t-block { border-color: #dc2626; background: #fef2f2; }
   footer { margin-top: 18px; color: var(--muted); font-size: 12.5px; }
   @media (max-width: 900px) { .timeline { grid-template-columns: 1fr 1fr; } }
+  /* Printing / Save as PDF: page 1 = the diagram, page 2 = the day at a glance */
+  @page { size: letter portrait; margin: 10mm; }
+  @media print {
+    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    body { background: #fff; padding: 0; }
+    header h1 { font-size: 20px; }
+    header p, .legend { font-size: 11px; }
+    .legend { margin: 8px 0; }
+    .card { box-shadow: none; padding: 10px; break-inside: avoid; }
+    .card h2 { display: none; }
+    svg { height: 218mm; width: auto; margin: 0 auto; }
+    svg .box, svg .dec { filter: none; }
+    .card + .card { break-before: page; margin-top: 0 !important; }
+    .card + .card h2 { display: block; }
+    .timeline { grid-template-columns: 1fr 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -149,7 +165,7 @@
     <rect class="box api" x="850" y="442" width="310" height="84" rx="12"/>
     <text x="1005" y="464" text-anchor="middle" class="tag tag-api">API → PBX</text>
     <text x="1005" y="486" text-anchor="middle" class="ttl">Voicemail</text>
-    <text x="1005" y="508" text-anchor="middle" class="sub">voicemail text (+ no-show notice) → hang up</text>
+    <text x="1005" y="508" text-anchor="middle" class="sub">general message, no patient details → hang up</text>
     <rect class="pill-off" x="915" y="536" width="180" height="26" rx="13"/>
     <text x="1005" y="553" text-anchor="middle" class="pill-t pill-off-t">MSNGRVCMSG</text>
 
@@ -162,7 +178,7 @@
     <text x="600" y="590" text-anchor="middle" class="tag tag-api">API → PBX</text>
     <text x="600" y="612" text-anchor="middle" class="ttl">Opening message</text>
     <text x="600" y="634" text-anchor="middle" class="quote">“…your appointment with Dr. Example on Monday at 9:30 AM…”</text>
-    <text x="600" y="654" text-anchor="middle" class="quote">“Can you make it? Say confirm, cancel or reschedule.” → listen</text>
+    <text x="600" y="654" text-anchor="middle" class="quote">“Can you make it? Please say confirm, cancel, or reschedule.” → listen</text>
     <line class="ar" x1="600" y1="668" x2="600" y2="692"/>
 
     <!-- 5. Patient speaks -->
@@ -200,22 +216,23 @@
     <text x="360" y="1004" text-anchor="middle" class="quote">“You'd like to cancel</text>
     <text x="360" y="1020" text-anchor="middle" class="quote">Monday at 9:30,</text>
     <text x="360" y="1036" text-anchor="middle" class="quote">is that right?”</text>
-    <text x="360" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
+    <text x="360" y="1060" text-anchor="middle" class="act">yes → transfer to operator</text>
+    <text x="360" y="1078" text-anchor="middle" class="sub">no → ask the question again</text>
 
     <!-- Branch: Reschedule -->
     <rect class="box api" x="490" y="958" width="220" height="130" rx="12"/>
     <text x="600" y="982" text-anchor="middle" class="ttl" fill="#b45309">Reschedule</text>
-    <text x="600" y="1004" text-anchor="middle" class="quote">“Cancel it now, or keep</text>
-    <text x="600" y="1020" text-anchor="middle" class="quote">it while you look for</text>
-    <text x="600" y="1036" text-anchor="middle" class="quote">another time?”</text>
+    <text x="600" y="1004" text-anchor="middle" class="quote">“Please hold while I</text>
+    <text x="600" y="1020" text-anchor="middle" class="quote">transfer you to a</text>
+    <text x="600" y="1036" text-anchor="middle" class="quote">staff member.”</text>
     <text x="600" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
 
     <!-- Branch: Unclear -->
     <rect class="box api" x="730" y="958" width="220" height="130" rx="12"/>
     <text x="840" y="982" text-anchor="middle" class="ttl" fill="#b45309">Unclear / other</text>
-    <text x="840" y="1004" text-anchor="middle" class="quote">“Let me transfer you</text>
-    <text x="840" y="1020" text-anchor="middle" class="quote">to a staff member</text>
-    <text x="840" y="1036" text-anchor="middle" class="quote">who can help.”</text>
+    <text x="840" y="1004" text-anchor="middle" class="quote">“Please hold while I</text>
+    <text x="840" y="1020" text-anchor="middle" class="quote">transfer you to a</text>
+    <text x="840" y="1036" text-anchor="middle" class="quote">staff member.”</text>
     <text x="840" y="1068" text-anchor="middle" class="act">→ transfer to operator</text>
 
     <!-- Branch: Silence -->
@@ -251,7 +268,7 @@
     <rect class="box api" x="360" y="1188" width="480" height="84" rx="12"/>
     <text x="600" y="1210" text-anchor="middle" class="tag tag-api">PBX → API</text>
     <text x="600" y="1232" text-anchor="middle" class="ttl">POST ended · outcome, times, transfer details</text>
-    <text x="600" y="1254" text-anchor="middle" class="sub">Audit log + retries · CONFPHONE to eCW only if still PENDING</text>
+    <text x="600" y="1254" text-anchor="middle" class="sub">Audit log + retries · CONFPHONE to eCW only if the visit is still PENDING</text>
 
     <!-- fallback -->
     <rect x="40" y="1300" width="1120" height="70" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
@@ -272,7 +289,7 @@
 </div>
 
 <footer>
-  Source: docs/PBX_INTEGRATION_API.md (draft 0.2) and docs/DEVELOPMENT_PLAN.md · Times 2:00 PM and 6:00 PM are examples until agreed with the PBX team · Wording is illustrative; the real text comes from the API.
+  Every transfer goes to the call's <code>operator_extension</code> with a short note for the operator · Cancel and reschedule never change the visit; staff handle them · Times 2:00 PM and 6:00 PM are examples until agreed with the PBX team · Wording is illustrative; the real text comes from the API.
 </footer>
 
 </div>

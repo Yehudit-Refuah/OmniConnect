@@ -1,17 +1,17 @@
 # OmniConnect: Summary and step-by-step to-do list
 
-*Last updated: 2026-11-18*
+*Last updated: 2026-11-23*
 
 Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS Code terminal (**Terminal → New Terminal**), with the `OmniConnect` folder open (**File → Open Folder**).
 
-> ### 📍 You are here: **B4.2** (main.py reads .env), then B4.3–B4.6
-> B1, B2 and B3 are finished and pushed. B4.1 (.env + .env.example) is done; .env.example and this file still need committing.
+> ### 📍 You are here: **B5.5** (try a whole conversation in `/docs`), then B5.6 and the B5 commit
+> B1–B4 are finished and pushed. B5.1–B5.4 are built (intent.py, flow.py, router connected) but not committed yet.
 
 ---
 
 ## Summary
 
-**OmniConnect** places automatic appointment confirmation calls for Refuah Health. The PBX (built by another team) runs the schedule. It fetches the call list from our API (`GET /api/pbx/v1/calls`), calls the patients, and sends back what happened (`POST /api/pbx/v1/calls`). For every POST, our API answers with what to say next and what to do.
+**OmniConnect** places automatic appointment confirmation calls for Refuah Health. The PBX (FreePBX, which you will set up yourself, see section D) runs the schedule. It fetches the call list from our API (`GET /api/pbx/v1/calls`), calls the patients, and sends back what happened (`POST /api/pbx/v1/calls`). For every POST, our API answers with what to say next and what to do.
 
 **Decisions so far:**
 - Patients answer in their own words. We work out what they meant: simple word matching first, then Claude for unclear replies.
@@ -20,6 +20,7 @@ Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS
 - Only **CONFPHONE** (confirmed) is written back to eCW for now, and only if the visit is still pending.
 - No calls from 12:00 PM on Fridays and holiday eves until the next regular day (table `omni_no_contact_days`).
 - Stack: Python 3.13 + FastAPI (using uv), SQL Server, React later for the screens, GitHub (private repo `Yehudit-Refuah/OmniConnect`).
+- The PBX is **FreePBX** (Asterisk). A small Python "PBX connector" on the FreePBX side will talk to our API (section D, after the API is finished).
 
 **Safety rules, always:**
 - No patient data in Git, ever: no real names, phones, MRNs, query results, screenshots or exports, not even inside comments.
@@ -28,10 +29,9 @@ Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS
 
 **Already done:**
 - The three eCW queries in `db/ecw/`.
-- The docs: `DEVELOPMENT_PLAN.md`, `PBX_INTEGRATION_API.md` (for the PBX team), `call_flow_diagram.html`, `GETTING_STARTED.md`.
+- The docs: `DEVELOPMENT_PLAN.md`, `PBX_INTEGRATION_API.md` (the PBX side's instructions), `call_flow_diagram.html` (updated to match B5), `pbx_get_calls.html` (GET /calls field sheet), `GETTING_STARTED.md`.
 - Git, uv and Python are installed.
-- Git setup is finished: the private repo `Yehudit-Refuah/OmniConnect` holds the first commit.
-- The backend project is created and its packages are installed (B1 step 1).
+- Git setup is finished, and B1–B4 are pushed to the private repo `Yehudit-Refuah/OmniConnect`.
 
 ---
 
@@ -253,7 +253,7 @@ git push
 
 ### B2. GET /calls with fake data
 - [x] Built and tested
-- [ ] Committed and pushed
+- [x] Committed and pushed
 
 **What you get:** the PBX address returns a call list in exactly the format promised in `PBX_INTEGRATION_API.md` §4.1, using fake calls for now.
 
@@ -359,7 +359,7 @@ git push
 
 ### B3. POST /calls (receive what happened)
 - [x] Built and tested
-- [ ] Committed and pushed
+- [x] Committed and pushed
 
 **What you get:** the PBX can report events (`dialing`, `answered`, `reply`, `ended`…) and always gets back the `say` + `action` answer described in §4.2.
 
@@ -497,8 +497,8 @@ git push
 
 **Commit:** `git commit -m "Add POST /calls with basic event answers"`
 
-### B4. Security: API key + IP allowlist ← 📍 you are here
-- [ ] Done
+### B4. Security: API key + IP allowlist ✅
+- [x] Done
 
 **What you get:** only the PBX can use the API.
 
@@ -538,7 +538,7 @@ In FastAPI, a **dependency** is a function that runs before an endpoint. Attachi
    ```
 
 #### B4.2 Make the app read `.env`
-- [ ] Done
+- [x] Done
 
 Replace all of `backend/app/main.py` with:
 ```python
@@ -562,7 +562,7 @@ def health():
 `load_dotenv()` must come first, so the settings are loaded before the rest of the app starts. `# noqa: E402` tells the code checker (Ruff) that the imports below it are placed there on purpose.
 
 #### B4.3 Create the security check
-- [ ] Done
+- [x] Done
 
 Create `backend/app/security.py`:
 ```python
@@ -600,7 +600,7 @@ def require_pbx(request: Request, api_key: str | None = Security(api_key_header)
 **Safe by default:** if `PBX_API_KEY` is missing from `.env`, **every** request is refused. A forgotten setting locks the door instead of leaving it open.
 
 #### B4.4 Attach it to the PBX router
-- [ ] Done
+- [x] Done
 
 In `backend/app/pbx/router.py`, change three lines:
 1. Add `Depends` to the FastAPI import:
@@ -617,7 +617,7 @@ In `backend/app/pbx/router.py`, change three lines:
    ```
 
 #### B4.5 Test it
-- [ ] Done
+- [x] Done
 
 **Restart the server.** Press **Ctrl+C**, then run `uv run fastapi dev app/main.py` again. The server reloads by itself when `.py` files change, but **not** when `.env` changes.
 
@@ -628,7 +628,7 @@ In http://localhost:8000/docs:
 4. **IP check:** in `.env`, change `PBX_ALLOWED_IPS=10.0.0.5` (not your PC), restart, and try with the key. You should get `403`. Then **change it back** and restart.
 
 #### B4.6 Commit
-- [ ] Done
+- [x] Done
 
 ```powershell
 cd C:\Users\ygarbuz\Projects\OmniConnect
@@ -644,11 +644,12 @@ git push
 
 **Later, on the real server:**
 - Use a **different** key from your test key.
-- Send it to the PBX team securely, **never by email**.
+- Keep it in a password manager, and put it only in the PBX connector's settings file (section D), **never in email or code**.
 - Set `PBX_ALLOWED_IPS` to the PBX server's address.
-- If the API ends up behind a proxy or load balancer, the IP check must read the real caller's address. Ask Claude when you get there.
+- **Don't** put `127.0.0.1` or `::1` in `PBX_ALLOWED_IPS` on the server. Only the PBX's real address goes there.
+- Your teammate says the network side (direct vs. IIS / proxy, HTTPS) is already set. If it turns out the API sits behind IIS or a proxy, the IP check must read the forwarded address. Ask Claude when you get there.
 
-### B5. Conversation logic
+### B5. Conversation logic ← 📍 you are here
 
 **What you get:** the real conversation from `call_flow_diagram.html`. The API greets the patient, reads their appointment, understands the answer, and decides the next step.
 
@@ -676,7 +677,7 @@ git push
 **How a reply is understood:** word lists first, because they're instant and free. Only if the words don't give a clear answer is Claude asked. If Claude is off, slow, or fails, the answer counts as `unclear` and the call goes to an operator. The patient is never stuck, and an operator is always the safe fallback.
 
 #### B5.1 Install the Claude package and add the settings
-- [ ] Done
+- [x] Done
 
 1. In the terminal, from the `backend` folder:
    ```powershell
@@ -697,7 +698,7 @@ git push
 **Only the reply text goes to Claude:** no name, MRN, phone or appointment details.
 
 #### B5.2 Create `intent.py`: what did the patient mean?
-- [ ] Done
+- [x] Done
 
 1. Create the folder `backend/app/conversation`, with an empty `__init__.py` inside.
 2. Create `backend/app/conversation/intent.py`:
@@ -845,7 +846,7 @@ git push
 - `messages.parse(... output_format=IntentAnswer)` makes Claude answer in the `IntentAnswer` shape, so it can only reply with one of the four labels.
 
 #### B5.3 Create `flow.py`: what do we do next?
-- [ ] Done
+- [x] Done
 
 Create `backend/app/conversation/flow.py`:
 ```python
@@ -987,7 +988,7 @@ def on_no_input(call: Call) -> CallAnswer:
 - `conv.result = "CONFPHONE"` only **remembers** the confirmation. Nothing is written to eCW until B9.
 
 #### B5.4 Connect the conversation to POST /calls
-- [ ] Done
+- [x] Done
 
 1. In `backend/app/pbx/router.py`, add this import at the top:
    ```python
@@ -1131,11 +1132,62 @@ git push
 | | Task | How |
 |---|---|---|
 | [ ] | Filter out test patients in the day-prior query | In `02_day_prior_confirmation_list.sql`, the `vw_TestPatients` join needs `AND tp.patientId IS NULL` in the WHERE clause (or the reverse, for allowlist testing). Ask Claude to walk through it. |
-| [ ] | Send the PBX document and diagram to the PBX team | Attach `docs/PBX_INTEGRATION_API.md` and `docs/call_flow_diagram.html` (or a screenshot of it) and ask for answers to §10, "Questions for the PBX team". |
-| [ ] | Ask IT for a test server | It needs to run Python and reach SQL Server, and it needs a fixed address the PBX can reach over HTTPS. |
-| [ ] | Ask IT/compliance about the Claude BAA | It must be confirmed before real patient replies are sent to Claude (B5). |
+| [ ] | Share the call flow diagram and GET /calls field sheet for feedback | Save `call_flow_diagram.html` and `pbx_get_calls.html` as PDFs (Ctrl+P → Save as PDF, outside the project folder) and email them with the "first draft" note. |
+| [ ] | Ask IT about the server | A server already exists. Confirm it can run Python and reach SQL Server, and whether there's a separate test server. (Network: your teammate says it's already set.) |
+| [ ] | Ask IT/compliance about the Claude BAA | It must be confirmed before real patient replies are sent to Claude (B5). Also ask: "Do we have an Anthropic account with a BAA? Who can create an API key for OmniConnect?" Until then `ANTHROPIC_API_KEY` stays empty and `CLAUDE_INTENT_ENABLED=false`. |
+| [ ] | Decide the final GET /calls fields | Current plan: `attempt_id`, patient name, MRN, phone, visit date, location and provider, plus `language`, `operator_extension` and `do_not_call_after`. Our API writes all the spoken text, so drop anything the PBX connector ends up not using (HIPAA minimum necessary). |
+| [ ] | Check `PBX_INTEGRATION_API.md` matches the code | The GET part was checked and matches ✅. After B5, check the POST part (events and answers) against `models.py`, `router.py` and `flow.py`. Ask Claude to do it. |
+| [ ] | Ask IT: OK to run a Python (FastAPI) app on the server? | As a Windows service or behind IIS. |
 | [ ] | Manager's answer on the team's GitHub setup | If there's a company organization, move the repo there: repo **Settings → Transfer ownership**. History is kept. |
 | [ ] | Clean up the docs | Regenerate `DEVELOPMENT_PLAN.html` from the `.md`, and delete the outdated `PROJECT_PLAN.md` (`git rm docs/PROJECT_PLAN.md`, then commit). |
+
+---
+
+## D. PBX side (FreePBX): after the API is finished
+
+**Start this only when B1–B9 are done.** You'll set up the PBX yourself. The PBX is **FreePBX**, which runs on **Asterisk** (the phone engine). FreePBX has no ready-made "call this API" feature, so the PBX side is a small Python program you write, the **PBX connector**. Our API doesn't change: the connector simply does what `PBX_INTEGRATION_API.md` says the PBX does.
+
+```
+FreePBX server
+  PBX connector (Python)  ── GET /calls, POST events ──►  our API
+     │ tells Asterisk to dial; runs during the call (AGI)
+  Asterisk: dials, detects voicemail, plays text-to-speech, records the reply, transfers
+```
+
+- **AGI** is how a script controls a live call in Asterisk: play this, record that, transfer there.
+- **Placing calls:** a "call file" or AMI (Asterisk's management interface) tells Asterisk to dial.
+- **Voicemail detection and transfer** are built into Asterisk (`AMD`, `Dial`).
+
+#### D0. Find out first (you can do these any time)
+- [ ] FreePBX and Asterisk version (FreePBX admin → **Dashboard**, or ask IT)
+- [ ] Which modules are installed, especially any text-to-speech (**Admin → Module Admin**)
+- [ ] Do you have access to the server itself (SSH / command line), or only the web admin page? AGI scripts need server access.
+- [ ] The PBX server's IP address. This goes in `PBX_ALLOWED_IPS` in the API's `.env`.
+- [ ] Which number the calls should show as caller ID, and which outgoing trunk to use
+
+#### D1. Choose the voice and the listening engines
+- [ ] **Text-to-speech** (the voice the patient hears): built-in Flite (free, robotic) or a cloud voice (Azure, Google, AWS; much more natural).
+- [ ] **Speech-to-text** (turning the patient's reply into text): **local Whisper** on our own server (no data leaves; needs a stronger server) or **cloud** (Azure, Google, AWS). ⚠️ The patient's voice is patient data, so **a cloud service needs a BAA**, just like Claude. Ask IT/compliance.
+- [ ] Both must support **English and Spanish**.
+
+#### D2. Test call by hand
+- [ ] Create a test extension or use your own phone. Make Asterisk call it and play a fixed sentence. This proves dialing and text-to-speech work. Fake data only.
+
+#### D3. The AGI script: one call, start to finish
+- [ ] A Python script that Asterisk runs when the call is answered: POST `answered` → play `say` → record → speech-to-text → POST `reply` → follow `action` (listen / hangup / transfer) → POST `ended`.
+- [ ] Safety fallback: if the API fails or takes more than 4 seconds, say "Please hold while I transfer you…" and transfer to `operator_extension`.
+- [ ] Voicemail: use `AMD` to detect a machine, then POST `voicemail` and play the answer.
+
+#### D4. The connector: getting the calls
+- [ ] On the schedule (e.g. 9:00 AM, 2:00 PM, 6:00 PM), GET `/calls` with the API key, and for each call tell Asterisk to dial it.
+- [ ] Respect `do_not_call_after`, and POST `dialing` before each call (the API may answer `skip`).
+- [ ] Keep the API key in a settings file on the FreePBX server, never in the code (same rule as `.env`).
+
+#### D5. Test end to end, then go live
+- [ ] Test server + test API key + your own phone as the "patient". Try every path in `call_flow_diagram.html`.
+- [ ] Production: new API key, the real PBX IP in the API's `.env`, and a small first day (a few calls) before turning it on fully.
+
+Each of these will get a full how-to (like section B) when you get here.
 
 ---
 
