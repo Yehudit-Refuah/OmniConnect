@@ -71,6 +71,39 @@ def yes_or_no(transcript: str) -> YesNo:
         return "no"
     return "unclear"
 
+# ---------- The cancel choice (word lists only, no AI) ----------
+# We asked: "Should we cancel it now, or only once you have a new appointment?"
+# Cancelling changes the visit, so only clear words count. Anything else -> operator.
+
+CancelChoice = Literal["cancel_now", "new_appointment", "keep", "unclear"]
+
+KEEP_PHRASES = [
+    "keep it", "don't cancel", "do not cancel", "never mind", "nevermind",
+    "i can make it", "i'll come", "i will come", "i'll be there",
+]
+NEW_APPOINTMENT_PHRASES = [
+    "new appointment", "another appointment", "new time", "another time",
+    "different time", "different day", "another day", "reschedule",
+    "only if", "first", "until",
+]
+CANCEL_NOW_PHRASES = [
+    "cancel now", "cancel it", "just cancel", "cancel anyway", "anyway",
+    "any case", "go ahead", "cancel",
+]
+
+
+def cancel_choice(transcript: str) -> CancelChoice:
+    """New appointment wins over keep, which wins over cancel now.
+    So "cancel only if I get a new appointment" and "keep it until I have a new
+    one" are new_appointment, and "don't cancel" is keep."""
+    text = normalize(transcript)
+    if contains_any(text, NEW_APPOINTMENT_PHRASES):
+        return "new_appointment"
+    if contains_any(text, KEEP_PHRASES):
+        return "keep"
+    if contains_any(text, CANCEL_NOW_PHRASES):
+        return "cancel_now"
+    return "unclear"
 
 # ---------- 2. Claude (only when the words aren't clear) ----------
 
