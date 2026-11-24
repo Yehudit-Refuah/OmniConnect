@@ -191,7 +191,7 @@
     <!-- Decision: understand -->
     <polygon class="dec" points="600,800 770,850 600,900 430,850"/>
     <text x="600" y="846" text-anchor="middle" class="ttl">API understands the reply</text>
-    <text x="600" y="866" text-anchor="middle" class="sub">word lists first, then Claude</text>
+    <text x="600" y="866" text-anchor="middle" class="sub">word lists first, then AI (Grok)</text>
 
     <!-- bus to 5 branches -->
     <line class="ln" x1="600" y1="900" x2="600" y2="920"/>
@@ -213,11 +213,12 @@
     <!-- Branch: Cancel -->
     <rect class="box api" x="250" y="958" width="220" height="130" rx="12"/>
     <text x="360" y="982" text-anchor="middle" class="ttl" fill="#b45309">Cancel</text>
-    <text x="360" y="1004" text-anchor="middle" class="quote">“You'd like to cancel</text>
-    <text x="360" y="1020" text-anchor="middle" class="quote">Monday at 9:30,</text>
-    <text x="360" y="1036" text-anchor="middle" class="quote">is that right?”</text>
-    <text x="360" y="1060" text-anchor="middle" class="act">yes → transfer to operator</text>
-    <text x="360" y="1078" text-anchor="middle" class="sub">no → ask the question again</text>
+    <text x="360" y="1002" text-anchor="middle" class="quote">“…Monday at 9:30. Cancel</text>
+    <text x="360" y="1017" text-anchor="middle" class="quote">it now, or only once you</text>
+    <text x="360" y="1032" text-anchor="middle" class="quote">have a new appointment?”</text>
+    <text x="360" y="1052" text-anchor="middle" class="act">now → “sure?” yes → cancelled</text>
+    <text x="360" y="1068" text-anchor="middle" class="act">new appt, or no → operator</text>
+    <text x="360" y="1082" text-anchor="middle" class="sub">keep it → ask again</text>
 
     <!-- Branch: Reschedule -->
     <rect class="box api" x="490" y="958" width="220" height="130" rx="12"/>
@@ -246,8 +247,8 @@
     <!-- status pills -->
     <rect x="20" y="1098" width="200" height="26" rx="13" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
     <text x="120" y="1115" text-anchor="middle" class="pill-t" fill="#15803d">CONFPHONE → eCW</text>
-    <rect class="pill-off" x="255" y="1098" width="210" height="26" rx="13"/>
-    <text x="360" y="1115" text-anchor="middle" class="pill-t pill-off-t">MANSNOACTN · visit unchanged</text>
+    <rect x="255" y="1098" width="210" height="26" rx="13" fill="#dcfce7" stroke="#16a34a" stroke-width="1.5"/>
+    <text x="360" y="1115" text-anchor="middle" class="pill-t" fill="#15803d">now: CANCPHONE → eCW</text>
     <rect class="pill-off" x="510" y="1098" width="180" height="26" rx="13"/>
     <text x="600" y="1115" text-anchor="middle" class="pill-t pill-off-t">MANSNOACTN</text>
     <rect class="pill-off" x="750" y="1098" width="180" height="26" rx="13"/>
@@ -268,7 +269,7 @@
     <rect class="box api" x="360" y="1188" width="480" height="84" rx="12"/>
     <text x="600" y="1210" text-anchor="middle" class="tag tag-api">PBX → API</text>
     <text x="600" y="1232" text-anchor="middle" class="ttl">POST ended · outcome, times, transfer details</text>
-    <text x="600" y="1254" text-anchor="middle" class="sub">Audit log + retries · CONFPHONE to eCW only if the visit is still PENDING</text>
+    <text x="600" y="1254" text-anchor="middle" class="sub">Audit log + retries · eCW updated only if the visit is still PENDING</text>
 
     <!-- fallback -->
     <rect x="40" y="1300" width="1120" height="70" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="2" stroke-dasharray="7 5"/>
@@ -289,7 +290,7 @@
 </div>
 
 <footer>
-  Every transfer goes to the call's <code>operator_extension</code> with a short note for the operator · Cancel and reschedule never change the visit; staff handle them · Times 2:00 PM and 6:00 PM are examples until agreed with the PBX team · Wording is illustrative; the real text comes from the API.
+  Every transfer goes to the call's <code>operator_extension</code> with a short note for the operator · “Cancel now” cancels the visit (CANCPHONE); “cancel only with a new appointment”, reschedule, and cancels on calls with several appointments go to staff and don't change the visit · Times 2:00 PM and 6:00 PM are examples until agreed with the PBX team · Wording is illustrative; the real text comes from the API.
 </footer>
 
 </div>

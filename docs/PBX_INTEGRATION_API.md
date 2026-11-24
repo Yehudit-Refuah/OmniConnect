@@ -1,6 +1,6 @@
 # OmniConnect ↔ PBX Integration: Appointment Confirmation Calls
 
-**API version:** v1, **draft 0.2 for review** (2026-11-15)
+**API version:** v1, **draft 0.3 for review** (2026-11-23)
 **OmniConnect contact:** ygarbuz@refuahhealth.org
 **Audience:** the PBX / telephony team
 
@@ -322,35 +322,45 @@ Wording below is illustrative; the actual text always comes from the API. Every 
 | 3 | `reply` "yes, we'll be there" | say: *"Thank you, the appointment is confirmed. Goodbye."* · `hangup` |
 | 4 | `ended`, outcome `completed` | `none` |
 
-**B. The patient wants to cancel → transfer**
+**B. The patient wants to cancel.** The API reads the appointment back and offers two choices.
 | # | PBX POSTs | API answers |
 |---|---|---|
 | 2 | `answered` | (opening, as above) · `listen` |
-| 3 | `reply` "I need to cancel" | say: *"You'd like to cancel your appointment on Monday at 9:30, is that right?"* · `listen` |
-| 4 | `reply` "yes" | say: *"Please hold while I transfer you to a staff member."* · `transfer` to `1100` |
+| 3 | `reply` "I need to cancel" | say: *"You'd like to cancel your appointment on Monday, November 17 at 9:30 AM. Should we cancel it now, or only once you have a new appointment? Please say cancel now, or new appointment."* · `listen`, hints `cancel now`, `new appointment`, `keep it` |
+
+Then one of:
+
+| # | PBX POSTs | API answers |
+|---|---|---|
+| **B1** 4 | `reply` "cancel it now" | say: *"Just to make sure: you want to cancel your appointment on Monday, November 17 at 9:30 AM. Is that right? Please say yes or no."* · `listen`, hints `yes`, `no` |
+| 5 | `reply` "yes" | say: *"Your appointment on Monday, November 17 at 9:30 AM has been cancelled. Thank you for letting us know. Goodbye."* · `hangup`. OmniConnect cancels the visit in eCW. If the answer is "no" or unclear: `transfer`, and the visit is **not** changed. |
+| 6 | `ended`, outcome `completed` | `none` |
+| **B2** 4 | `reply` "only if I get a new appointment" | say: *"Please hold while I transfer you to a staff member."* · `transfer` to `1100`, `transfer_note` *"Cancel once a new appointment is booked: …"*. The visit is **not** changed. |
 | 5 | `ended`, outcome `transferred` | `none` |
+| **B3** 4 | `reply` "never mind, don't cancel" | say: *"Okay, we won't cancel it. Can you make it? …"* · `listen` (back to the main question) |
+
+If the answer to the choice is unclear, or the call covers several appointments, the API transfers to an operator.
 
 **C. Reschedule → transfer**
 | # | PBX POSTs | API answers |
 |---|---|---|
-| 3 | `reply` "can I come another day?" | say: *"Would you like us to cancel this appointment now, or keep it while you look for another time?"* · `listen` |
-| 4 | `reply` "keep it for now" | say: *"Please hold while I transfer you."* · `transfer` to `1100` |
+| 3 | `reply` "can I come another day?" | say: *"Please hold while I transfer you to a staff member."* · `transfer` to `1100`, `transfer_note` *"Wants to reschedule: …"* |
 
 **D. Unclear answer → transfer**
 | # | PBX POSTs | API answers |
 |---|---|---|
-| 3 | `reply` "who is this?" | say: *"Let me transfer you to a staff member who can help."* · `transfer` |
+| 3 | `reply` "who is this?" | say: *"Please hold while I transfer you to a staff member."* · `transfer` |
 
 **E. Silence**
 | # | PBX POSTs | API answers |
 |---|---|---|
-| 3 | `no_input` | say: *(the question again)* · `listen` |
-| 4 | `no_input` | say: *"Let me transfer you to a staff member."* · `transfer` |
+| 3 | `no_input` | say: *"Sorry, I didn't hear you."* + the question again · `listen` |
+| 4 | `no_input` | say: *"Please hold while I transfer you to a staff member."* · `transfer` |
 
 **F. Voicemail**
 | # | PBX POSTs | API answers |
 |---|---|---|
-| 2 | `voicemail` | say: *(voicemail message, which may include the clinic's no-show notice)* · `hangup` |
+| 2 | `voicemail` | say: *(a general message with no patient name or visit details: someone else may hear it)* · `hangup` |
 | 3 | `ended`, outcome `voicemail` | `none` |
 
 **G. Appointment cancelled before the call**
@@ -449,5 +459,6 @@ These requests contain **protected health information (PHI)**: names, MRNs, phon
 
 | Version | Date | Change |
 |---|---|---|
+| 0.3 | 2026-11-24 | Cancel now asks once more ("Is that right?") before cancelling; no or unclear → transfer. Earlier in 0.3 (2026-11-23): cancel offers two choices: cancel now (the visit is cancelled) or cancel only once a new appointment is booked (transfer). Reschedule goes straight to an operator. Voicemail has no patient details. Example wording matches the API. |
 | 0.2 | 2026-11-15 | One address, `/api/pbx/v1/calls`, with GET and POST. The pre-dial check is now the `dialing` event, and the final result is the `ended` event. |
 | 0.1 | 2026-11-15 | First draft for review (four separate endpoints) |

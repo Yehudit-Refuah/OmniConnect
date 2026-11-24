@@ -12,8 +12,10 @@
    A row on a Friday/Saturday is allowed; the stricter rule wins.
 
    Lives in the LOCAL database (same one as dbo.vw_TestPatients), not in eCW.
-   Load once a year from Refuah's closure calendar (can be seeded from Hebcal),
-   then have Refuah review it.
+   Filled automatically: OmniConnect's daily job (TODO B7) works out the
+   holidays with the pyluach library and inserts any missing dates for the
+   next 13 months. It never changes existing rows, so rows added by hand
+   (e.g. clinic closures) are kept.
    Dialect : Microsoft SQL Server (T-SQL)
    ===================================================================== */
 
