@@ -4,7 +4,7 @@
 **Owner:** ygarbuz, Refuah Health Center
 **Status:** v1.0 draft, 2026-11-10
 **Related:** [`db/ecw/PLAN.md`](../db/ecw/PLAN.md) (eCW query plan) · [`GETTING_STARTED.md`](GETTING_STARTED.md) (beginner guide to Git, Python and React) · [`PBX_INTEGRATION_API.md`](PBX_INTEGRATION_API.md) (API contract for the PBX team)
-**Updated:** 2026-11-23: the PBX is FreePBX, set up by the OmniConnect owner; Grok (xAI, under BAA) replaces Claude for unclear replies; cancel offers "cancel now" (visit cancelled, CANCPHONE) or "cancel only with a new appointment" (transfer). Earlier (2026-11-15): calls run on Refuah's PBX through OmniConnect's API; spoken replies.
+**Updated:** 2026-11-23: the PBX is FreePBX, set up by the OmniConnect owner; Grok, which already runs on FreePBX under a BAA, sends its guess with each reply (`ai_intent`) and OmniConnect uses it for unclear replies, so OmniConnect calls no AI itself (2026-11-24); cancel offers "cancel now" (visit cancelled, CANCPHONE) or "cancel only with a new appointment" (transfer). Earlier (2026-11-15): calls run on Refuah's PBX through OmniConnect's API; spoken replies.
 
 ---
 
@@ -58,7 +58,7 @@ The same platform later carries Phases 1, 2, 4 and 5 (AI receptionist, schedulin
 | Data fetching in React | **TanStack Query** | Handles loading, refreshing and errors for live dashboard counts. |
 | Staff login | **Microsoft Entra ID** (MSAL) | Staff use their Refuah Microsoft account; roles come from AD groups. |
 | Calls | **Refuah's PBX, built by the PBX team** *(decided 2026-11-15, see [D1](#8-decisions-needed))* | The PBX runs the schedule, dials, plays the text, records the reply and transfers. OmniConnect provides the API it calls: [PBX_INTEGRATION_API.md](PBX_INTEGRATION_API.md). |
-| Understanding spoken replies | **Word lists first, then Grok (xAI)**, which Refuah already has under a BAA; a fast model | Free-form answers ("we'll be there") without forcing keypad choices. Anything unclear → transfer to an operator. The choice "cancel now" uses word lists only. Needs a BAA (D8). |
+| Understanding spoken replies | **Word lists first, then Grok's guess sent by the PBX** (`ai_intent`). Grok already runs on FreePBX under Refuah's BAA, so OmniConnect calls no AI itself | Free-form answers ("we'll be there") without forcing keypad choices. Anything unclear → transfer to an operator. The choice "cancel now" uses word lists only. Needs a BAA (D8). |
 | Texts (SMS) | **Later, after voice:** provider to decide | Not needed for the first release. |
 | Hosting | **On-premises Windows server** *(changed from Azure)*, unless IT prefers Azure | eCW, the local database and the PBX are all on-premises, so this is the simplest and safest network path. |
 
@@ -91,7 +91,7 @@ flowchart LR
         PBX["Operator queues<br/>x1100 x1301 x7724 x1160"]
     end
 
-    AI["Grok (xAI)<br/>(reply understanding, BAA)"]
+    AI["Grok on FreePBX<br/>(reply understanding, BAA)"]
     Patient(["Patient phone"])
     Manager(["Managers<br/>(Entra ID login)"])
 
@@ -102,7 +102,8 @@ flowchart LR
     TEL <--> Patient
     TEL -- "transfer" --> PBX
     API <--> R
-    R -. "unclear wording only" .-> AI
+    TEL -. "reply text" .-> AI
+    AI -. "ai_intent, used for unclear wording only" .-> TEL
     API <--> ODB
     W -- "CONFPHONE, CANCSMS, ..." --> ECWIF
     UI <--> API
@@ -114,7 +115,7 @@ flowchart LR
 | Piece | What it does | Runs as |
 |---|---|---|
 | **Worker** | At about 8:30 AM on run days it runs the eCW query, saves a snapshot, asks the rules engine for contact groups, and fills the **call queue** that the PBX pulls from. It also queues retries and writes statuses back to eCW. | Windows service #1 |
-| **Rules engine** | Pure Python functions with **no database or network access** (apart from the optional Grok call for unclear replies). Easy to test: given appointments, it returns groups, message text, times and status codes; given a reply, it returns the next step of the conversation. | Library used by the worker and the API |
+| **Rules engine** | Pure Python functions with **no database or network access** (Grok's guess arrives with the reply from the PBX). Easy to test: given appointments, it returns groups, message text, times and status codes; given a reply, it returns the next step of the conversation. | Library used by the worker and the API |
 | **Backend API** | Serves the dashboard, and the **PBX API**: calls due, the pre-dial check, live conversation events, final results ([PBX_INTEGRATION_API.md](PBX_INTEGRATION_API.md)). | Windows service #2 |
 | **Dashboard** | React app: search, live counts, visit timeline, at-risk list, export. | Static files served by the API or by IIS |
 | **OmniConnect DB** | Snapshots, contact attempts, responses, status updates and the append-only audit log. | Your existing local SQL Server |
@@ -212,7 +213,7 @@ The tables live in the local SQL Server database, under a schema named `omni`. T
 | `omni.contact_group_member` | appointment in a group | group ↔ appointment |
 | `omni.contact_attempt` | each dial attempt (`attempt_id`) | call, attempt number, state (queued → reserved by PBX → dialing → closed), `do_not_call_after`, result from the PBX (completed, transferred, voicemail, no answer, busy, failed, not dialed) |
 | `omni.call_event` | each conversation step | attempt, sequence, event (answered, reply, no_input, voicemail), transcript, how it was understood, the API's answer (say, action, transfer_to). Lets the PBX's retries be answered the same way twice. |
-| `omni.patient_response` | each understood reply | outcome (confirm, cancel, reschedule, unclear), method (word list or Grok) |
+| `omni.patient_response` | each understood reply | outcome (confirm, cancel, reschedule, unclear), method (word list or the PBX's Grok guess) |
 | `omni.transfer` | each queue transfer | extension, wait-time estimate given, actual wait, answering agent |
 | `omni.status_update` | each eCW write-back | appointment, old → new code, sent at, confirmed at, error |
 | `omni.audit_event` | everything that happens | when, who (system or staff user), what, which appointment. **Insert-only**: the app account has no UPDATE/DELETE rights on it |
@@ -238,7 +239,7 @@ Every rule in the requirements becomes one small, tested Python function in `bac
 | No-show notice on voicemail (NP, Adult Well, Specialty Consult) | `needs_no_show_notice()` | voicemail only |
 | No contact Fri/eve 12:00 PM → next regular morning | `is_contact_allowed(at)`, `next_allowed_time(at)` | must match the SQL logic exactly; shared test cases |
 | Voicemail, then afternoon + evening retries | `retry_schedule()` | times in `omni.setting` |
-| Understand a spoken reply: confirm / cancel / reschedule / unclear | `understand_reply(transcript, lang)` | word lists (English + Spanish) first; Grok only when the lists don't settle it; **anything not clearly one of the options → unclear**, never guess |
+| Understand a spoken reply: confirm / cancel / reschedule / unclear | `understand_reply(transcript, lang)` | word lists (English + Spanish) first; the PBX's Grok guess (`ai_intent`) only when the lists don't settle it; **anything not clearly one of the options → unclear**, never guess |
 | Conversation: what to say and do after each event | `next_step(state, event)` | returns `say` + `listen` / `hangup` / `transfer`, as in [PBX_INTEGRATION_API.md §4.2](PBX_INTEGRATION_API.md#42-post-calls-report-what-happened) |
 | Cancel → read the appointment back and ask "Should we cancel it now, or only once you have a new appointment?" *(decided 2026-11-23, replaces the 2026-11-15 rule)* | `next_step()` | **cancel now** → asked once more "Is that right?" *(added 2026-11-24)*: yes → the visit is cancelled (**CANCPHONE**) and the call ends, no or unclear → transfer · **only with a new appointment** → transfer to an operator, the visit is NOT updated · **keep it** → back to the main question · unclear, or a call with several appointments → transfer. Word lists only for this choice (no AI). |
 | Reschedule → transfer to an operator | `next_step()` | routing group from the query |
@@ -326,7 +327,7 @@ Size: **S** about 1 week · **M** about 2–3 weeks · **L** about 4+ weeks, for
 
 ### M5: Spoken replies and live test calls (M–L)
 **Goal:** free-form answers understood, and real calls to staff test phones.
-- Grok (xAI) added to `understand_reply()` for replies the word lists don't settle (BAA, D8). Measure the response time: the PBX waits at most about 4 seconds.
+- `understand_reply()` uses the PBX's Grok guess (`ai_intent`) for replies the word lists don't settle (BAA, D8). The PBX connector asks Grok and should give up after about 2 seconds.
 - **A test set of about 100 made-up replies** (English and Spanish) with the correct answer for each. Run it after every change; the result must not get worse.
 - Voicemail text, including the no-show notice where it applies; English and Spanish wording reviewed by Refuah.
 - Retries: no-answer and busy calls are offered again at the afternoon and evening pulls; the Shabbat/holiday rule is applied through `do_not_call_after` and the `dialing` event.
@@ -377,7 +378,7 @@ Two-way texts, after voice is live: provider with a BAA, replies, delivery recei
 | D5 | **Entra ID app registration** and the AD groups for dashboard roles. | Start of M3 | IT |
 | D6 | **Is GitHub approved** for Refuah code? Create a Refuah GitHub organization (preferred over a personal account). Alternative: Azure DevOps. | Start of M0 | IT |
 | D7 | **Hosting:** which server, and who patches and backs it up? On-prem or Azure? **A test server the PBX can reach over HTTPS is now needed for M4.** | Start of M4 | IT |
-| D8 | **BAAs for patient speech:** the PBX's speech-to-text engine (if it's a cloud service) and Grok (xAI) for understanding replies. Refuah has a Grok BAA; confirm it covers the xAI API. | Before real calls (M5) | Compliance |
+| D8 | **BAAs for patient speech:** the PBX's speech-to-text engine (if it's a cloud service) and Grok on FreePBX for understanding replies. Refuah has a Grok BAA; confirm it covers this use. | Before real calls (M5) | Compliance |
 | D9 | **Recording:** are calls recorded? Do patients need to be told? Retention for recordings and transcripts. | Before real calls (M5) | Compliance |
 
 Write each answer as a short note in `docs/decisions/`, so the reasoning is saved.

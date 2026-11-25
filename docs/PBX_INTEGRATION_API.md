@@ -192,7 +192,8 @@ In words:
   "event": "reply",
   "occurred_at": "2026-11-16T09:04:31-05:00",
   "transcript": "yeah we'll be there",
-  "transcript_confidence": 0.93
+  "transcript_confidence": 0.93,
+  "ai_intent": "confirm"
 }
 ```
 
@@ -211,7 +212,7 @@ In words:
 | `dialing` | Right before dialing | none | `dial` or `skip` |
 | `answered` | A person answered | none | opening text + `listen` |
 | `voicemail` | Voicemail / answering machine detected, after the beep | none | voicemail text + `hangup` |
-| `reply` | The patient spoke after a `listen` | `transcript` **(required)**, `transcript_confidence` (optional, 0–1) | next text + `listen` / `hangup` / `transfer` |
+| `reply` | The patient spoke after a `listen` | `transcript` **(required)**, `transcript_confidence` (optional, 0–1), `ai_intent` (optional: Grok's guess, one of `confirm`, `cancel`, `reschedule`, `unclear`; the API uses it only when the words themselves are unclear) | next text + `listen` / `hangup` / `transfer` |
 | `no_input` | After a `listen`, silence until the timeout | none | the question again, or `transfer` |
 | `hangup_by_patient` | The patient hung up during the conversation | none | `none` |
 | `ended` | The attempt is over: completed, transferred, voicemail, no answer, busy, failed or skipped. **Always the last POST.** | see [`ended` fields](#ended-fields) | `none` |
@@ -459,6 +460,6 @@ These requests contain **protected health information (PHI)**: names, MRNs, phon
 
 | Version | Date | Change |
 |---|---|---|
-| 0.3 | 2026-11-24 | Cancel now asks once more ("Is that right?") before cancelling; no or unclear → transfer. Earlier in 0.3 (2026-11-23): cancel offers two choices: cancel now (the visit is cancelled) or cancel only once a new appointment is booked (transfer). Reschedule goes straight to an operator. Voicemail has no patient details. Example wording matches the API. |
+| 0.3 | 2026-11-24 | New optional `ai_intent` on `reply`: the PBX's Grok guess, used only for unclear replies to the first question. Cancel now asks once more ("Is that right?") before cancelling; no or unclear → transfer. Earlier in 0.3 (2026-11-23): cancel offers two choices: cancel now (the visit is cancelled) or cancel only once a new appointment is booked (transfer). Reschedule goes straight to an operator. Voicemail has no patient details. Example wording matches the API. |
 | 0.2 | 2026-11-15 | One address, `/api/pbx/v1/calls`, with GET and POST. The pre-dial check is now the `dialing` event, and the final result is the `ended` event. |
 | 0.1 | 2026-11-15 | First draft for review (four separate endpoints) |
