@@ -6,6 +6,8 @@ from app.security import require_pbx
 
 from app.conversation import flow
 
+from app.rules.no_contact import can_call_now, current_blocked_days, next_block
+
 from app.pbx.models import (Appointment, Call, CallAnswer, CallBatch,
                             CallEvent, ListenSettings, Patient)
 
@@ -42,13 +44,21 @@ FAKE_CALLS = [
 
 
 @router.get("/calls", response_model=CallBatch)
+
 def get_calls(limit: int = 50):
-    """Return the calls the PBX should place now (fake data for now)."""
-    return CallBatch(
-        batch_id="test-batch",
-        generated_at=datetime.now().astimezone(),
-        calls=FAKE_CALLS[:limit],
-    )
+    """Return the calls the PBX should place now."""
+    now = datetime.now().astimezone()
+    blocked = current_blocked_days()
+    if not can_call_now(now, blocked):
+        calls = []  # Shabbat, a holiday, or after 12:00 PM on a Friday or holiday eve
+    else:
+        # Tell the PBX to stop by the next blocked time, if that comes first.
+        stop = next_block(now, blocked)
+        calls = [
+            c.model_copy(update={"do_not_call_after": min(c.do_not_call_after, stop)})
+            for c in FAKE_CALLS[:limit]
+        ]
+    return CallBatch(batch_id="test-batch", generated_at=now, calls=calls)
 
 # Answers we already gave, so a repeated POST gets the same answer.
 # Kept in memory for now; moves to the database in B7.
@@ -78,6 +88,9 @@ def post_call_event(event: CallEvent):
 def answer_event(event: CallEvent, call: Call) -> CallAnswer:
     """Fixed answers for now. B5 replaces the conversation parts."""
     if event.event == "dialing":
+        # Last check right before the phone rings: the time may have passed since GET.
+        if not can_call_now(datetime.now().astimezone(), current_blocked_days()):
+            return CallAnswer(action="skip", reason="no_contact_day")
         return CallAnswer(action="dial")
     if event.event == "answered":
            return flow.start(call)

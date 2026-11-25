@@ -4,8 +4,12 @@
 
 Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS Code terminal (**Terminal → New Terminal**), with the `OmniConnect` folder open (**File → Open Folder**).
 
-> ### 📍 You are here: **B5.8** (use the PBX's Grok answer, remove Claude), then B6 (no-contact days)
-> B1–B5.7 are committed and pushed: the conversation with the split cancel path and the final "Is that right?" check, and the tests in `backend/tests` (`22 passed`). Not committed yet: `anthropic` removed and `openai` added in `pyproject.toml` / `uv.lock`, and the doc updates. B5.8 removes `openai` again (our API calls no AI), so commit it all together at the end of B5.8.
+> ### 📍 You are here: **B6.1 step 4** (the no-contact tests), then commit. Then B6.2 (the visit is still pending right before dialing), then B5.8.
+> - ✅ B1–B5.7, pushed.
+> - ✅ "Switch the AI step from Claude to Grok" (pushed): **our API asks Grok itself** (`openai` package, `XAI_API_KEY`), off by default. That's the older plan. The current plan is B5.8: the PBX's Grok answers and our API only reads `ai_intent`, so B5.8 replaces this code.
+> - ✅ B6.0 holidays (committed, **not pushed yet**: run `git push`).
+> - B6.1: steps 1–3 done (tzdata, `no_contact.py`, `router.py`). Left: step 4 (`tests/test_no_contact.py`) and the commit.
+> - Delete `backend/app/secutity.py`: it's a misspelled copy of `security.py`, not used anywhere.
 
 ---
 
@@ -22,6 +26,7 @@ Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS
   - Unclear → operator. Calls with several appointments (families) → operator.
 - Only **CONFPHONE** (confirmed) and **CANCPHONE** (cancelled by the patient) are written back to eCW, and only if the visit is still pending.
 - No calls from 12:00 PM on Fridays and holiday eves until the next regular day (table `omni_no_contact_days`).
+- Right before each call, the visit is checked again in eCW. If it isn't pending anymore (cancelled, confirmed, moved or deleted), it isn't read out; if nothing is left, the call is skipped. If the check fails, we don't call (B6.2).
 - Stack: Python 3.13 + FastAPI (using uv), SQL Server, React later for the screens, GitHub (private repo `Yehudit-Refuah/OmniConnect`).
 - The PBX is **FreePBX** (Asterisk). A small Python "PBX connector" on the FreePBX side will talk to our API (section D, after the API is finished).
 
@@ -1305,13 +1310,13 @@ USE_PBX_AI_INTENT=false
 Make the same change in `backend/.env.example`.
 
 **Step 3: `intent.py`** (two changes)
-1. At the top, the import lines become only these three (delete `logging`, `lru_cache`, `BaseModel` and the `log = ...` line):
+1. At the top, the import lines become only these three (delete `logging`, `lru_cache`, `BaseModel` and the `log = ...` line). The Grok code you have now uses them; the new code doesn't:
 ```python
 import os
 import re
 from typing import Literal
 ```
-2. Delete everything from the line `# ---------- 2. Claude (only when the words aren't clear) ----------` to the end of the file, and paste this in its place:
+2. Delete everything from the line `# ---------- 2. Grok (only when the words aren't clear) ----------` to the end of the file (that's `IntentAnswer`, `SYSTEM_PROMPT`, `grok_enabled`, `grok_client`, `ask_grok` and the old `understand_reply`), and paste this in its place. Keep a copy of `SYSTEM_PROMPT`: it's a good start for the prompt the PBX connector sends Grok (D3).
 ```python
 # ---------- 2. The PBX's AI answer (only when the words aren't clear) ----------
 # FreePBX already runs Grok. With each reply it may send Grok's guess as "ai_intent".
@@ -1353,7 +1358,7 @@ def on_reply(call: Call, transcript: str, ai_intent: str | None = None) -> CallA
     intent = understand_reply(transcript, ai_intent)
 ```
 
-**Step 6: tests.** Create `backend/tests/test_ai_intent.py`:
+**Step 6: tests.** Delete `backend/tests/test_grok.py` (it tests `ask_grok`, which is gone now). Then create `backend/tests/test_ai_intent.py`:
 ```python
 from app.conversation.intent import understand_reply
 
@@ -1384,7 +1389,7 @@ def test_no_pbx_answer_means_unclear(monkeypatch):
     monkeypatch.setenv("USE_PBX_AI_INTENT", "true")
     assert understand_reply(UNCLEAR_WORDS, None) == "unclear"
 ```
-Run `uv run pytest`. Expected: `27 passed`.
+Run `uv run pytest`. Expected: `27 passed` if B6 isn't done yet; `50 passed` after B6.0–B6.2 (2 Grok tests removed, 5 new).
 
 **Try it in `/docs`:** set `USE_PBX_AI_INTENT=true` in `.env` and restart the server. Send `answered`, then a `reply` with `"transcript": "my son has school, so I don't think so", "ai_intent": "cancel"`. You should get the cancel question. With `"ai_intent": "maybe"` you should get a `transfer`. Set it back to `false` afterwards.
 
@@ -1408,7 +1413,7 @@ git push
 **What you get:** no calls are handed out from 12:00 PM on Fridays and holiday eves, or on Saturdays and holidays.
 
 #### B6.0 Holidays worked out by the app (pyluach)
-- [ ] Done
+- [x] Done (committed as "Work out the Jewish holidays with pyluach")
 
 **What you get:** the app works out the Jewish holidays itself, every year, with nothing to run by hand. In B7, a daily job also adds them to `dbo.omni_no_contact_days`, so the SQL day-prior query sees them too.
 
@@ -1495,7 +1500,7 @@ def test_twenty_days_in_2027():
 **Commit:** `git add -A` then `git commit -m "Work out the Jewish holidays with pyluach"`
 
 #### B6.1 The check in the app
-- [ ] Done
+- [ ] Done (steps 1–3 ✅; step 4 and the commit left)
 
 **Do B6.0 first:** this step uses `holidays.py` and `rules/__init__.py` from B6.0.
 
@@ -1644,7 +1649,7 @@ def test_next_block_on_a_regular_monday_is_friday_noon():
 ```
 
 **Check it worked:**
-- `uv run pytest`: expected `43 passed` (27 from B5, 4 from B6.0, 12 new).
+- `uv run pytest`: expected `40 passed` (28 now + 12 new). If you already did B5.8: `43 passed`.
 - In `/docs`, on a weekday morning: GET `/calls` returns the fake call, and POST `dialing` answers `dial`. On Friday after 12:00 PM or on Shabbat, GET returns `"calls": []` and `dialing` answers `skip` with `reason: "no_contact_day"`.
 - The fake call's `do_not_call_after` still shows 2026-11-17 8:00 PM, because that's the date in the fake data and it's earlier. Real calls (B7) get each day's own time.
 
@@ -1655,6 +1660,182 @@ git status          # .env must NOT be in the list
 git commit -m "Add no-contact day rule"
 git push
 ```
+
+#### B6.2 Last check before dialing: is the visit still pending?
+- [ ] Done
+
+**Do B6.1 first:** this adds to the `dialing` part you changed there.
+
+**Why:** the call list is made in the morning, but a patient may call in to cancel, or an operator may cancel, confirm or move the visit, before our call goes out. So right before the phone rings (the PBX's `dialing` POST), we look at each visit again:
+
+| The visit now | We do |
+|---|---|
+| Still **PENDING**, same time | `dial` |
+| Cancelled, confirmed some other way, moved to another time, deleted, or not found | Leave that visit out. If no visits are left on the call → `skip`, reason `visit_not_pending` |
+| The check itself fails (database down, timeout) | `skip`, reason `status_check_failed`. When we're not sure, we don't call. |
+
+On a call with several visits, only the ones still pending are read out. Until B7 the "current status" is fake data. From B7 on it's one quick query to eCW (`db/ecw/04_visit_status_now.sql`).
+
+**Step 1: create `backend/app/rules/eligibility.py`** and paste:
+```python
+"""Right before dialing: is each visit still waiting for a confirmation?
+A patient or an operator may have cancelled, confirmed or moved it since the morning list."""
+from datetime import datetime
+from typing import NamedTuple
+
+from app.pbx.models import Call
+
+PENDING = "PEN"  # TBD: the exact eCW code, same as @status_pending in 02_day_prior_confirmation_list.sql
+
+
+class VisitNow(NamedTuple):
+    """How the visit looks in eCW right now."""
+    status: str
+    visit_datetime: datetime
+    deleted: bool = False
+
+
+def still_due(visit_datetime: datetime, now: VisitNow | None) -> bool:
+    """Still pending, not deleted, and still at the time we would read out."""
+    return (now is not None
+            and not now.deleted
+            and now.status == PENDING
+            and now.visit_datetime == visit_datetime)
+
+
+def check_call(call: Call, visits: dict[int, VisitNow]) -> Call | None:
+    """The call with only the visits that are still due, or None if none are left."""
+    patients = []
+    for patient in call.patients:
+        appts = [a for a in patient.appointments
+                 if still_due(a.visit_datetime, visits.get(a.appointment_id))]
+        if appts:
+            patients.append(patient.model_copy(update={"appointments": appts}))
+    if not patients:
+        return None
+    return call.model_copy(update={"patients": patients})
+
+
+# ---------- Where the current status comes from ----------
+# Until B7: fake statuses. From B7 on: one quick query to eCW for these appointment IDs
+# (db/ecw/04_visit_status_now.sql).
+
+FAKE_VISITS = {
+    1001: VisitNow(PENDING, datetime.fromisoformat("2026-11-18T09:30:00-05:00")),
+}
+
+
+def current_visits(call: Call) -> dict[int, VisitNow]:
+    ids = [a.appointment_id for p in call.patients for a in p.appointments]
+    return {i: FAKE_VISITS[i] for i in ids if i in FAKE_VISITS}
+```
+
+**What to notice:**
+- **Anything other than PENDING means "don't read it out"**, so we don't have to list every eCW status (cancelled, confirmed by text, no-show…).
+- **A changed time also counts.** Otherwise we'd read out the old time.
+- `check_call` takes the statuses as an argument. That keeps it easy to test, and in B7 only `current_visits` changes.
+
+**Step 2: `backend/app/pbx/router.py`** (five changes)
+1. At the very top, above `from datetime import datetime`, add:
+   ```python
+   import logging
+   ```
+2. Under the `from app.rules.no_contact import …` line, add:
+   ```python
+   from app.rules.eligibility import check_call, current_visits
+   ```
+3. Above the `router = APIRouter(...)` line, add:
+   ```python
+   log = logging.getLogger(__name__)
+   ```
+4. Replace the `find_call` function with this (it adds `_checked_calls` above it):
+   ```python
+   # The call as checked at "dialing": only the visits still due. Moves to the database in B7.
+   _checked_calls: dict[str, Call] = {}
+
+
+   def find_call(attempt_id: str) -> Call | None:
+       if attempt_id in _checked_calls:
+           return _checked_calls[attempt_id]
+       return next((c for c in FAKE_CALLS if c.attempt_id == attempt_id), None)
+   ```
+5. In `answer_event`, replace the whole `dialing` part with:
+   ```python
+       if event.event == "dialing":
+           # Last check right before the phone rings: the time may have passed since GET.
+           if not can_call_now(datetime.now().astimezone(), current_blocked_days()):
+               return CallAnswer(action="skip", reason="no_contact_day")
+           # Is the visit still pending? It may have been cancelled, confirmed or moved since GET.
+           try:
+               checked = check_call(call, current_visits(call))
+           except Exception:
+               log.exception("Visit status check failed for %s", call.attempt_id)
+               return CallAnswer(action="skip", reason="status_check_failed")  # not sure -> don't call
+           if checked is None:
+               return CallAnswer(action="skip", reason="visit_not_pending")
+           _checked_calls[call.attempt_id] = checked  # the conversation reads only these visits
+           return CallAnswer(action="dial")
+   ```
+   After pasting, select the block and press **Shift+Tab** until `if event.event == "dialing":` has 4 spaces in front, like the other `if event.event` lines.
+
+**Why `_checked_calls`:** after `dialing`, every later POST (`answered`, `reply`, …) uses the checked call, so the patient hears only the visits that are still pending. The log line has only the `attempt_id`, no patient details.
+
+**Step 3: tests.** Create `backend/tests/test_eligibility.py`:
+```python
+from datetime import timedelta
+
+import pytest
+
+from app.pbx.router import FAKE_CALLS
+from app.rules.eligibility import PENDING, VisitNow, check_call
+
+CALL = FAKE_CALLS[0]
+APPT = CALL.patients[0].appointments[0]
+
+
+def visits(status=PENDING, moved=timedelta(0), deleted=False):
+    return {APPT.appointment_id: VisitNow(status, APPT.visit_datetime + moved, deleted)}
+
+
+def test_still_pending_is_called():
+    assert check_call(CALL, visits()) == CALL
+
+
+@pytest.mark.parametrize("change", [
+    {"status": "CANC"},              # cancelled by an operator
+    {"status": "CONFSMS"},           # confirmed some other way
+    {"deleted": True},               # deleted from the schedule
+    {"moved": timedelta(hours=2)},   # moved to another time
+])
+def test_changed_visit_is_skipped(change):
+    assert check_call(CALL, visits(**change)) is None
+
+
+def test_visit_not_found_is_skipped():
+    assert check_call(CALL, {}) is None
+
+
+def test_only_the_visits_still_due_are_kept():
+    second = APPT.model_copy(update={"appointment_id": 1002})
+    patient = CALL.patients[0].model_copy(update={"appointments": [APPT, second]})
+    two_visits = CALL.model_copy(update={"patients": [patient]})
+    checked = check_call(two_visits, {1002: VisitNow(PENDING, APPT.visit_datetime)})
+    assert [a.appointment_id for p in checked.patients for a in p.appointments] == [1002]
+```
+
+**Check it worked:**
+- `uv run pytest`: expected `47 passed` (40 + 7 new). If you already did B5.8: `50 passed`.
+- In `/docs` (on a weekday morning): POST `dialing` → `dial`. Then in `eligibility.py`, in `FAKE_VISITS`, change `VisitNow(PENDING,` to `VisitNow("CANC",`, save (the server restarts by itself), and POST `dialing` again with a higher `sequence` → `skip`, reason `visit_not_pending`. Change it back afterwards.
+
+**Commit:**
+```powershell
+git add -A
+git status          # .env must NOT be in the list
+git commit -m "Check the visit is still pending right before dialing"
+git push
+```
+
+**In B7:** `current_visits` runs `db/ecw/04_visit_status_now.sql` for the call's appointment IDs, with a short timeout (about 3 seconds). It turns `date` + `startTime` into a `visit_datetime` with the clinic's time zone, the same way the morning list does, so the two can be compared.
 
 ### B7. Connect to SQL Server
 - [ ] Done
@@ -1667,7 +1848,8 @@ git push
 3. A daily job (APScheduler) runs the day-prior query and fills the calls table.
    - **Before that, the same job fills the holiday table:** it calls `holiday_days(today, 400)` and inserts each date that isn't in `dbo.omni_no_contact_days` yet. Rows already there are never changed, so staff edits and closures stay. This keeps the next 13 months filled with no one running anything. If the job fails, it logs an error. Later the dashboard shows it.
    - Check: empty the table on the test database, run the job once, and the upcoming holidays appear.
-4. GET `/calls` reads from the table and reserves the calls; POST saves every event. The duplicate check moves from the dictionary to the database.
+4. GET `/calls` reads from the table and reserves the calls; POST saves every event. The duplicate check moves from the dictionary to the database, and so does `_checked_calls` (B6.2).
+   - `current_visits` (B6.2) switches from fake data to `db/ecw/04_visit_status_now.sql`. A skipped call is saved with its reason, and isn't handed out again.
 5. Start in **allowlist mode** (`ALLOWLIST_MODE=true`), so that only test patients are ever handed to the PBX.
 
 **Check it worked:** with allowlist mode on, GET `/calls` returns only test patients.

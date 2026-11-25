@@ -279,6 +279,7 @@ ORDER BY
       must go through a supported eCW interface (API / HL7). TBD.
    2. Before each call or text, the app re-checks that one appointment's
       current status (requirement: "use the most up-to-date status").
+      Query: 04_visit_status_now.sql. Used at the PBX "dialing" step (TODO B6.2).
    3. Rows with no usable phone number are still returned. The app marks
       them FAILEDMSG and shows them on the dashboard instead of silently
       dropping them.

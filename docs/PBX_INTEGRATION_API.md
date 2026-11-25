@@ -80,7 +80,7 @@ sequenceDiagram
 
 In words:
 1. **At each scheduled time** (for example 9:00 AM, 2:00 PM and 6:00 PM, see Q7), the PBX sends a **GET** for the calls that are due.
-2. **Before each dial,** the PBX POSTs `dialing`. The API answers `dial`, or `skip` if the appointment was cancelled in the meantime or the allowed calling time has ended.
+2. **Before each dial,** the PBX POSTs `dialing`. The API checks each visit in eCW again and answers `dial`, or `skip` if no visit on the call is still pending (cancelled, confirmed, moved or deleted in the meantime), the check failed, or the allowed calling time has ended.
 3. **During the call,** the PBX POSTs each event (answered, the patient's reply, silence, voicemail). Each answer says what to play and what to do next.
 4. **After every attempt,** including skipped ones, the PBX POSTs `ended` with the outcome.
 
@@ -284,7 +284,7 @@ In words:
 }
 ```
 ```json
-{ "say": "", "action": "skip", "reason": "appointment_cancelled" }
+{ "say": "", "action": "skip", "reason": "visit_not_pending" }
 ```
 
 | Field | Description |
@@ -295,7 +295,7 @@ In words:
 | `listen` | With `listen`: recording limits, plus optional `hints` (expected words that can improve speech recognition). |
 | `transfer_to` | With `transfer`: the extension. |
 | `transfer_note` | With `transfer`: a short reason for the operator, if the PBX can show or whisper it (see Q5). |
-| `reason` | With `skip`: `appointment_cancelled`, `already_confirmed`, `outside_calling_hours`, `no_contact_day` or `superseded`. |
+| `reason` | With `skip`: `visit_not_pending` (cancelled, confirmed, moved or deleted since the list was made), `status_check_failed` (the API couldn't check eCW, so it doesn't call), `outside_calling_hours`, `no_contact_day` or `superseded`. The PBX handles them all the same way. |
 
 **Actions**
 
@@ -364,11 +364,13 @@ If the answer to the choice is unclear, or the call covers several appointments,
 | 2 | `voicemail` | say: *(a general message with no patient name or visit details: someone else may hear it)* · `hangup` |
 | 3 | `ended`, outcome `voicemail` | `none` |
 
-**G. Appointment cancelled before the call**
+**G. Appointment cancelled (or confirmed, or moved) before the call**
 | # | PBX POSTs | API answers |
 |---|---|---|
-| 1 | `dialing` | `skip`, reason `appointment_cancelled` |
-| 2 | `ended`, outcome `not_dialed`, detail `appointment_cancelled` | `none` |
+| 1 | `dialing` | `skip`, reason `visit_not_pending` |
+| 2 | `ended`, outcome `not_dialed`, detail `visit_not_pending` | `none` |
+
+If only some of the visits on a call are still pending, the API answers `dial` and the conversation reads out only those.
 
 **H. No answer / busy:** `dialing` → `dial`, then `ended` with outcome `no_answer` or `busy`. The API will offer a retry at a later GET, with a new `attempt_id` and the same `call_id`.
 
@@ -460,6 +462,6 @@ These requests contain **protected health information (PHI)**: names, MRNs, phon
 
 | Version | Date | Change |
 |---|---|---|
-| 0.3 | 2026-11-24 | New optional `ai_intent` on `reply`: the PBX's Grok guess, used only for unclear replies to the first question. Cancel now asks once more ("Is that right?") before cancelling; no or unclear → transfer. Earlier in 0.3 (2026-11-23): cancel offers two choices: cancel now (the visit is cancelled) or cancel only once a new appointment is booked (transfer). Reschedule goes straight to an operator. Voicemail has no patient details. Example wording matches the API. |
+| 0.3 | 2026-11-25 | At `dialing`, the API checks each visit in eCW again: skip reasons are now `visit_not_pending` and `status_check_failed` (instead of `appointment_cancelled` and `already_confirmed`). On 2026-11-24: new optional `ai_intent` on `reply`: the PBX's Grok guess, used only for unclear replies to the first question. Cancel now asks once more ("Is that right?") before cancelling; no or unclear → transfer. Earlier in 0.3 (2026-11-23): cancel offers two choices: cancel now (the visit is cancelled) or cancel only once a new appointment is booked (transfer). Reschedule goes straight to an operator. Voicemail has no patient details. Example wording matches the API. |
 | 0.2 | 2026-11-15 | One address, `/api/pbx/v1/calls`, with GET and POST. The pre-dial check is now the `dialing` event, and the final result is the `ended` event. |
 | 0.1 | 2026-11-15 | First draft for review (four separate endpoints) |
