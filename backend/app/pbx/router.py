@@ -1,3 +1,5 @@
+import logging
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -8,9 +10,12 @@ from app.conversation import flow
 
 from app.rules.no_contact import can_call_now, current_blocked_days, next_block
 
+from app.rules.eligibility import check_call, current_visits
+
 from app.pbx.models import (Appointment, Call, CallAnswer, CallBatch,
                             CallEvent, ListenSettings, Patient)
 
+log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/pbx/v1", dependencies=[Depends(require_pbx)])
 
 FAKE_CALLS = [
@@ -65,7 +70,13 @@ def get_calls(limit: int = 50):
 _answers: dict[tuple[str, int], CallAnswer] = {}
 
 
+# The call as checked at "dialing": only the visits still due. Moves to the database in B7.
+_checked_calls: dict[str, Call] = {}
+
+
 def find_call(attempt_id: str) -> Call | None:
+    if attempt_id in _checked_calls:
+        return _checked_calls[attempt_id]
     return next((c for c in FAKE_CALLS if c.attempt_id == attempt_id), None)
 
 
@@ -88,10 +99,19 @@ def post_call_event(event: CallEvent):
 def answer_event(event: CallEvent, call: Call) -> CallAnswer:
     """Fixed answers for now. B5 replaces the conversation parts."""
     if event.event == "dialing":
-        # Last check right before the phone rings: the time may have passed since GET.
+    # Last check right before the phone rings: the time may have passed since GET.
         if not can_call_now(datetime.now().astimezone(), current_blocked_days()):
             return CallAnswer(action="skip", reason="no_contact_day")
-        return CallAnswer(action="dial")
+        # Is the visit still pending? It may have been cancelled, confirmed or moved since GET.
+        try:
+            checked = check_call(call, current_visits(call))
+        except Exception:
+            log.exception("Visit status check failed for %s", call.attempt_id)
+            return CallAnswer(action="skip", reason="status_check_failed")  # not sure -> don't call
+        if checked is None:
+            return CallAnswer(action="skip", reason="visit_not_pending")
+        _checked_calls[call.attempt_id] = checked  # the conversation reads only these visits
+    return CallAnswer(action="dial")
     if event.event == "answered":
            return flow.start(call)
     if event.event == "voicemail":

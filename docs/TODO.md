@@ -4,12 +4,10 @@
 
 Tick a box (`[ ]` becomes `[x]`) when a step is done. Run all commands in the VS Code terminal (**Terminal → New Terminal**), with the `OmniConnect` folder open (**File → Open Folder**).
 
-> ### 📍 You are here: **B6.1 step 4** (the no-contact tests), then commit. Then B6.2 (the visit is still pending right before dialing), then B5.8.
-> - ✅ B1–B5.7, pushed.
-> - ✅ "Switch the AI step from Claude to Grok" (pushed): **our API asks Grok itself** (`openai` package, `XAI_API_KEY`), off by default. That's the older plan. The current plan is B5.8: the PBX's Grok answers and our API only reads `ai_intent`, so B5.8 replaces this code.
-> - ✅ B6.0 holidays (committed, **not pushed yet**: run `git push`).
-> - B6.1: steps 1–3 done (tzdata, `no_contact.py`, `router.py`). Left: step 4 (`tests/test_no_contact.py`) and the commit.
-> - Delete `backend/app/secutity.py`: it's a misspelled copy of `security.py`, not used anywhere.
+> ### 📍 You are here: **B6.2** (check the visit is still pending right before dialing), then B5.8 (use the PBX's Grok answer)
+> - ✅ B1–B5.7, B6.0 and B6.1, all pushed. `uv run pytest`: `40 passed`.
+> - ✅ "Switch the AI step from Claude to Grok" (pushed): **our API asks Grok itself** (`openai` package, `XAI_API_KEY`), off by default. That's the older plan. B5.8 replaces it: the PBX's Grok answers, and our API only reads `ai_intent`.
+> - 🧹 `backend/app/secutity.py` (misspelled copy of `security.py`, not used) got committed with B6.1. Remove it as part of B6.2: `git rm backend/app/secutity.py`, before the B6.2 commit.
 
 ---
 
@@ -657,7 +655,7 @@ git push
 - **Don't** put `127.0.0.1` or `::1` in `PBX_ALLOWED_IPS` on the server. Only the PBX's real address goes there.
 - Your teammate says the network side (direct vs. IIS / proxy, HTTPS) is already set. If it turns out the API sits behind IIS or a proxy, the IP check must read the forwarded address. Ask Claude when you get there.
 
-### B5. Conversation logic ← 📍 you are here
+### B5. Conversation logic (B5.8 left)
 
 **What you get:** the real conversation from `call_flow_diagram.html`. The API greets the patient, reads their appointment, understands the answer, and decides the next step.
 
@@ -1407,8 +1405,8 @@ git push
 
 **Still to do later:** Spanish (`es-US`) sentences. The text in `flow.py` is English only for now.
 
-### B6. No-contact day check in Python
-- [ ] Done
+### B6. No-contact day check in Python ← 📍 you are here
+- [ ] Done (B6.0 ✅, B6.1 ✅, B6.2 left)
 
 **What you get:** no calls are handed out from 12:00 PM on Fridays and holiday eves, or on Saturdays and holidays.
 
@@ -1500,7 +1498,7 @@ def test_twenty_days_in_2027():
 **Commit:** `git add -A` then `git commit -m "Work out the Jewish holidays with pyluach"`
 
 #### B6.1 The check in the app
-- [ ] Done (steps 1–3 ✅; step 4 and the commit left)
+- [x] Done (committed as "Add no-contact day rule", `40 passed`)
 
 **Do B6.0 first:** this step uses `holidays.py` and `rules/__init__.py` from B6.0.
 
@@ -1829,6 +1827,7 @@ def test_only_the_visits_still_due_are_kept():
 
 **Commit:**
 ```powershell
+git rm backend/app/secutity.py      # the misspelled copy, not used
 git add -A
 git status          # .env must NOT be in the list
 git commit -m "Check the visit is still pending right before dialing"
